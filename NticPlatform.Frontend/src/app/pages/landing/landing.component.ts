@@ -382,11 +382,99 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  openInfoModal(event?: Event, section?: string): void {
+  legalModal = {
+    open: false,
+    activeTab: 'rules' as 'rules' | 'rubrics' | 'gdpa' | 'terms' | 'ges' | 'qliq'
+  };
+
+  openLegalModal(tab: 'rules' | 'rubrics' | 'gdpa' | 'terms' | 'ges' | 'qliq' = 'rules', event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.legalModal.activeTab = tab;
+    this.legalModal.open = true;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
+    this.cdr.markForCheck();
+  }
+
+  closeLegalModal(): void {
+    this.legalModal.open = false;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  setLegalTab(tab: 'rules' | 'rubrics' | 'gdpa' | 'terms' | 'ges' | 'qliq'): void {
+    this.legalModal.activeTab = tab;
+    this.cdr.markForCheck();
+  }
+
+  openPortalLink(section: string, event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const email = getAuthValue('activeUserEmail') || '';
+    const isLoggedIn = !!(role && email);
+
+    switch (section) {
+      case 'courses':
+        if (isLoggedIn) {
+          this.router.navigate(['/lms']);
+        } else {
+          this.activeRoleId = 'student';
+          this.openLoginModal(event);
+        }
+        break;
+
+      case 'instructor':
+        if (isLoggedIn) {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.activeRoleId = 'instructor';
+          this.openLoginModal(event);
+        }
+        break;
+
+      case 'mentor':
+        if (isLoggedIn) {
+          this.router.navigate(['/talent']);
+        } else {
+          this.router.navigate(['/registration']);
+        }
+        break;
+
+      case 'admin':
+        if (isLoggedIn && (role === 'admin' || role === 'super_admin' || role === 'national_admin')) {
+          this.router.navigate(['/user-management']);
+        } else if (isLoggedIn) {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.activeRoleId = 'admin';
+          this.openLoginModal(event);
+        }
+        break;
+
+      case 'rubrics':
+        this.openLegalModal('rubrics', event);
+        break;
+
+      default:
+        this.openLegalModal(section as any, event);
+        break;
+    }
+  }
+
+  openInfoModal(event?: Event, section: string = 'rules'): void {
     if (event) {
       event.preventDefault();
     }
-    this.openLoginModal(event);
+    this.openPortalLink(section, event);
   }
 
   openLoginModal(event?: Event): void {
@@ -410,11 +498,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.detectedRoleName = '';
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';
-      this.telemetryLogs = [
-        `SECURE ACCESS PORTAL READY`,
-        `SYSTEM INTEGRITY: ACCREDITED`,
-        `AWAITING OPERATOR INPUT...`
-      ];
     }
   }
 
@@ -908,14 +991,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     return item.id;
   }
 
-  // Biometric Scan & Telemetry variables
-  isScanning = false;
-  telemetryLogs: string[] = [];
-  private decryptInterval: any;
-  private scanTimeout: any;
-  private telemetryTimeouts: any[] = [];
-
   // Support a Champion interactive state
+  private scanTimeout: any;
+
   isSupportModalOpen = false;
   activeSupportType: 'mail' | 'team' | 'competition' | 'suggestion' | null = null;
   supportForm = {
@@ -1230,11 +1308,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this._mapColorTimers = [];
     this.stopSlideShow();
     this.stopCompSlideshow();
-    this.stopVideoEditLoop();
-    if (this.decryptInterval) clearInterval(this.decryptInterval);
     if (this.scanTimeout) clearTimeout(this.scanTimeout);
-    this.telemetryTimeouts.forEach(t => clearTimeout(t));
-    this.telemetryTimeouts = [];
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.matrixAnimFrame) cancelAnimationFrame(this.matrixAnimFrame);
     if (this.matrixObserver) { this.matrixObserver.disconnect(); this.matrixObserver = null; }
@@ -1656,18 +1730,12 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (!credential.trim()) {
       if (this.detectedRoleName) {
         this.detectedRoleName = '';
-        this.telemetryLogs = [
-          `SECURE ACCESS PORTAL READY`,
-          `SYSTEM INTEGRITY: ACCREDITED`,
-          `AWAITING OPERATOR INPUT...`
-        ];
       }
       return;
     }
     const lookup = credential.trim().toLowerCase();
 
     // Security Hardening: Never expose or identify Super Admin / Administrator role to prevent user enumeration.
-    // Covers email (admin@...), token prefixes (NTIC-ADM-*, ADMIN-*), and any credential containing the admin marker.
     const isAdminLookup =
       lookup === 'admin@ntic.org.gh' ||
       lookup.includes('admin@') ||
@@ -1676,11 +1744,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (isAdminLookup) {
       if (this.detectedRoleName) {
         this.detectedRoleName = '';
-        this.telemetryLogs = [
-          `SECURE ACCESS PORTAL READY`,
-          `SYSTEM INTEGRITY: ACCREDITED`,
-          `AWAITING OPERATOR INPUT...`
-        ];
       }
       return;
     }
@@ -1693,11 +1756,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       if (user.role === 'super_admin' || user.role === 'admin') {
         if (this.detectedRoleName) {
           this.detectedRoleName = '';
-          this.telemetryLogs = [
-            `SECURE ACCESS PORTAL READY`,
-            `SYSTEM INTEGRITY: ACCREDITED`,
-            `AWAITING OPERATOR INPUT...`
-          ];
         }
         return;
       }
@@ -1712,18 +1770,12 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const role = labels[user.role] || '';
       if (role) {
         this.detectedRoleName = role;
-        this.updateTelemetry(role);
       } else if (this.detectedRoleName) {
         this.detectedRoleName = '';
       }
     } else {
       if (this.detectedRoleName) {
         this.detectedRoleName = '';
-        this.telemetryLogs = [
-          `SECURE ACCESS PORTAL READY`,
-          `SYSTEM INTEGRITY: ACCREDITED`,
-          `AWAITING OPERATOR INPUT...`
-        ];
       }
     }
   }
@@ -1733,85 +1785,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.password = '';
     this.loginError = '';
     this.detectedRoleName = '';
-    if (typeof window !== 'undefined') {
-      this.telemetryLogs = [
-        `SECURE ACCESS PORTAL READY`,
-        `SYSTEM INTEGRITY: ACCREDITED`,
-        `AWAITING OPERATOR INPUT...`
-      ];
-    }
-  }
-
-  triggerBiometricScan(): void {
-    if (this.scanTimeout) {
-      clearTimeout(this.scanTimeout);
-    }
-    this.isScanning = true;
-    this.scanTimeout = setTimeout(() => {
-      this.isScanning = false;
-    }, 1200);
-  }
-
-  decryptEmail(targetEmail: string): void {
-    if (this.decryptInterval) {
-      clearInterval(this.decryptInterval);
-    }
-    
-    this.password = '************';
-    const emailInput = (this.elementRef.nativeElement.querySelector('#email') || this.elementRef.nativeElement.querySelector('#emailModal')) as HTMLInputElement;
-    
-    let currentIteration = 0;
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789@._-';
-    
-    this.ngZone.runOutsideAngular(() => {
-      this.decryptInterval = setInterval(() => {
-        let tempEmail = '';
-        for (let i = 0; i < targetEmail.length; i++) {
-          if (i < currentIteration) {
-            tempEmail += targetEmail[i];
-          } else if (i === currentIteration) {
-            tempEmail += chars[Math.floor(Math.random() * chars.length)];
-          } else {
-            tempEmail += Math.random() > 0.55 ? chars[Math.floor(Math.random() * chars.length)] : '';
-          }
-        }
-        
-        if (emailInput) {
-          emailInput.value = tempEmail;
-        }
-        
-        currentIteration++;
-        if (currentIteration > targetEmail.length) {
-          clearInterval(this.decryptInterval);
-          this.decryptInterval = null;
-          this.ngZone.run(() => {
-            this.email = targetEmail;
-            this.password = '';
-          });
-        }
-      }, 20);
-    });
-  }
-
-  updateTelemetry(roleName: string): void {
-    this.telemetryTimeouts.forEach(t => clearTimeout(t));
-    this.telemetryTimeouts = [];
-    this.telemetryLogs = [];
-    
-    const logs = [
-      `SECURE LINK ROUTED`,
-      `AUTHORIZING PRESET SIGNATURE...`,
-      `ACCESS GRANTED TO: [${roleName.toUpperCase()}]`,
-      `CREATING SECURE SESSION CONTEXT...`,
-      `DECRYPTING INSTITUTIONAL IDENTITY...`
-    ];
-    
-    logs.forEach((logLine, index) => {
-      const timeout = setTimeout(() => {
-        this.telemetryLogs.push(logLine);
-      }, index * 180);
-      this.telemetryTimeouts.push(timeout);
-    });
   }
 
   get activeRole(): UserRole | null {
@@ -1819,6 +1792,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   }
 
   login(): void {
+    if (this.isLoggingIn) return;
     this.isLoggingIn = true;
     this.loginError = '';
     this.detectedRoleName = '';

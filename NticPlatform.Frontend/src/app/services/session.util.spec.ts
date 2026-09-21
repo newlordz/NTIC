@@ -10,6 +10,8 @@ import {
   purgeLegacyStoredPassword,
   purgeLegacyAuthStorage,
   purgeCardDataFromDrafts,
+  getSessionSnapshot,
+  restoreSessionSnapshot,
 } from './session.util';
 
 describe('SessionUtil', () => {
@@ -247,6 +249,48 @@ describe('SessionUtil', () => {
       localStorage.setItem('ntic_remembered_password', btoa('old-password'));
       getRememberedCredentials();
       expect(localStorage.getItem('ntic_remembered_password')).toBeNull();
+    });
+  });
+
+  describe('session snapshots for cross-tab handoff', () => {
+    it('should return null when no token is present', () => {
+      expect(getSessionSnapshot()).toBeNull();
+    });
+
+    it('should return full snapshot when session is present', () => {
+      setAuthValue('activeUserToken', 'jwt-token-123');
+      setAuthValue('activeRoleId', 'super_admin');
+      setAuthValue('activeUserEmail', 'admin@ntic.test');
+      setAuthValue('activeUserTicket', 'NTIC-001');
+      setAuthValue('activeUserName', 'System Admin');
+
+      const snapshot = getSessionSnapshot();
+      expect(snapshot).not.toBeNull();
+      expect(snapshot?.activeUserToken).toBe('jwt-token-123');
+      expect(snapshot?.activeRoleId).toBe('super_admin');
+      expect(snapshot?.activeUserEmail).toBe('admin@ntic.test');
+      expect(snapshot?.activeUserTicket).toBe('NTIC-001');
+      expect(snapshot?.activeUserName).toBe('System Admin');
+    });
+
+    it('should restore snapshot into sessionStorage without writing to localStorage', () => {
+      restoreSessionSnapshot({
+        activeUserToken: 'restored-token',
+        activeRoleId: 'student',
+        activeUserEmail: 'student@ntic.test',
+        activeUserTicket: 'NTIC-999',
+        activeUserName: 'Kofi Mensah'
+      });
+
+      expect(getAuthValue('activeUserToken')).toBe('restored-token');
+      expect(getAuthValue('activeRoleId')).toBe('student');
+      expect(getAuthValue('activeUserEmail')).toBe('student@ntic.test');
+      expect(getAuthValue('activeUserTicket')).toBe('NTIC-999');
+      expect(getAuthValue('activeUserName')).toBe('Kofi Mensah');
+
+      // Zero token in localStorage invariant
+      expect(localStorage.getItem('activeUserToken')).toBeNull();
+      expect(localStorage.getItem('activeRoleId')).toBeNull();
     });
   });
 });

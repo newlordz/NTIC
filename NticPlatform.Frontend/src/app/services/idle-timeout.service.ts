@@ -57,6 +57,9 @@ export class IdleTimeoutService implements OnDestroy {
   /** Persisted so a page reload inside the same tab does not reset the clock. */
   private readonly lastActivityKey = 'ntic_last_activity_at';
   private readonly lastHeartbeatKey = 'ntic_last_heartbeat_at';
+  /** Shared cross-tab timestamp keys so activity in one tab prevents other tabs from expiring. */
+  private readonly sharedActivityKey = 'ntic_shared_last_activity_at';
+  private readonly sharedHeartbeatKey = 'ntic_shared_last_heartbeat_at';
 
   /** Emits when the idle limit is reached. AppComponent performs the sign-out. */
   readonly expired$ = new Subject<void>();
@@ -74,9 +77,36 @@ export class IdleTimeoutService implements OnDestroy {
   /** Throttle: sessionStorage writes on every mousemove would be wasteful. */
   private lastRecordedAt = 0;
 
+  private isSendingHeartbeat = false;
+  private heartbeatRetryTimer: any = null;
+
   private readonly onActivity = () => this.recordActivity();
   private readonly onVisible = () => {
-    if (typeof document === 'undefined' || document.visibilityState === 'visible') this.check();
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      this.check();
+      if (getAuthValue('activeUserToken') && Date.now() - this.lastHeartbeatAt >= this.heartbeatMinGapMs) {
+        this.sendHeartbeat(false);
+      }
+    }
+  };
+  private readonly onStorage = (e: StorageEvent) => {
+    if (e.key === this.sharedActivityKey && e.newValue) {
+      const at = Number(e.newValue);
+      if (Number.isFinite(at) && at > this.lastRecordedAt) {
+        this.lastRecordedAt = at;
+        try { window.sessionStorage.setItem(this.lastActivityKey, String(at)); } catch (_) {}
+        if (this.warningOpen) {
+          this.warningOpen = false;
+          this.warningCleared$.next();
+        }
+      }
+    } else if (e.key === this.sharedHeartbeatKey && e.newValue) {
+      const at = Number(e.newValue);
+      if (Number.isFinite(at) && at > this.lastHeartbeatAt) {
+        this.lastHeartbeatAt = at;
+        try { window.sessionStorage.setItem(this.lastHeartbeatKey, String(at)); } catch (_) {}
+      }
+    }
   };
 
   /** Attaches listeners. Safe to call more than once. */
@@ -95,6 +125,7 @@ export class IdleTimeoutService implements OnDestroy {
     document.addEventListener('visibilitychange', this.onVisible);
     window.addEventListener('focus', this.onVisible);
     window.addEventListener('pageshow', this.onVisible);
+    window.addEventListener('storage', this.onStorage);
 
     this.checkTimer = setInterval(() => this.check(), this.checkIntervalMs);
   }
@@ -107,6 +138,7 @@ export class IdleTimeoutService implements OnDestroy {
     document.removeEventListener('visibilitychange', this.onVisible);
     window.removeEventListener('focus', this.onVisible);
     window.removeEventListener('pageshow', this.onVisible);
+    window.removeEventListener('storage', this.onStorage);
     if (this.checkTimer) {
       clearInterval(this.checkTimer);
       this.checkTimer = null;
@@ -114,6 +146,10 @@ export class IdleTimeoutService implements OnDestroy {
     if (this.trailingHeartbeatTimer) {
       clearTimeout(this.trailingHeartbeatTimer);
       this.trailingHeartbeatTimer = null;
+    }
+    if (this.heartbeatRetryTimer) {
+      clearTimeout(this.heartbeatRetryTimer);
+      this.heartbeatRetryTimer = null;
     }
   }
 
@@ -261,38 +297,61 @@ export class IdleTimeoutService implements OnDestroy {
    */
   private sendHeartbeat(force: boolean): void {
     if (!getAuthValue('activeUserToken')) return;
+    if (this.isSendingHeartbeat) return;
     if (!this.activitySinceHeartbeat && !force) return;
     const now = Date.now();
     if (!force && now - this.lastHeartbeatAt < this.heartbeatMinGapMs) return;
 
-    this.lastHeartbeatAt = now;
-    this.writeLastHeartbeat(now);
-    this.activitySinceHeartbeat = false;
     if (this.trailingHeartbeatTimer) {
       clearTimeout(this.trailingHeartbeatTimer);
       this.trailingHeartbeatTimer = null;
     }
+    if (this.heartbeatRetryTimer) {
+      clearTimeout(this.heartbeatRetryTimer);
+      this.heartbeatRetryTimer = null;
+    }
 
+    this.isSendingHeartbeat = true;
     this.http.post<{ expires_in_seconds: number; session_idle_seconds: number }>(
       `${environment.apiUrl}/auth/heartbeat`, {}
     ).subscribe({
       next: res => {
+        this.isSendingHeartbeat = false;
+        this.activitySinceHeartbeat = false;
         this.setIdleLimitSeconds(res?.session_idle_seconds);
         const confirmedAt = Date.now();
         this.lastHeartbeatAt = confirmedAt;
         this.writeLastHeartbeat(confirmedAt);
       },
-      error: () => {}
+      error: (err) => {
+        this.isSendingHeartbeat = false;
+        // Keep activity flagged so a retry or new activity will re-attempt when network returns
+        if (err?.status !== 401 && err?.status !== 403 && getAuthValue('activeUserToken')) {
+          this.activitySinceHeartbeat = true;
+          this.heartbeatRetryTimer = setTimeout(() => {
+            if (this.started && !this.warningOpen) {
+              this.sendHeartbeat(true);
+            }
+          }, 8000);
+        }
+      }
     });
   }
 
   private readLastActivity(): number | null {
     if (typeof window === 'undefined') return null;
     try {
-      const raw = window.sessionStorage.getItem(this.lastActivityKey);
-      if (!raw) return null;
-      const value = Number(raw);
-      return Number.isFinite(value) ? value : null;
+      const rawSession = window.sessionStorage.getItem(this.lastActivityKey);
+      const rawShared = window.localStorage.getItem(this.sharedActivityKey);
+      const valSession = rawSession ? Number(rawSession) : null;
+      const valShared = rawShared ? Number(rawShared) : null;
+      const validSession = valSession !== null && Number.isFinite(valSession) ? valSession : null;
+      const validShared = valShared !== null && Number.isFinite(valShared) ? valShared : null;
+
+      if (validSession !== null && validShared !== null) {
+        return Math.max(validSession, validShared);
+      }
+      return validSession ?? validShared;
     } catch {
       return null;
     }
@@ -302,6 +361,7 @@ export class IdleTimeoutService implements OnDestroy {
     if (typeof window === 'undefined') return;
     try {
       window.sessionStorage.setItem(this.lastActivityKey, String(at));
+      window.localStorage.setItem(this.sharedActivityKey, String(at));
     } catch {
       /* storage unavailable - interval check re-seeds it */
     }
@@ -310,10 +370,17 @@ export class IdleTimeoutService implements OnDestroy {
   private readLastHeartbeat(): number | null {
     if (typeof window === 'undefined') return null;
     try {
-      const raw = window.sessionStorage.getItem(this.lastHeartbeatKey);
-      if (!raw) return null;
-      const value = Number(raw);
-      return Number.isFinite(value) ? value : null;
+      const rawSession = window.sessionStorage.getItem(this.lastHeartbeatKey);
+      const rawShared = window.localStorage.getItem(this.sharedHeartbeatKey);
+      const valSession = rawSession ? Number(rawSession) : null;
+      const valShared = rawShared ? Number(rawShared) : null;
+      const validSession = valSession !== null && Number.isFinite(valSession) ? valSession : null;
+      const validShared = valShared !== null && Number.isFinite(valShared) ? valShared : null;
+
+      if (validSession !== null && validShared !== null) {
+        return Math.max(validSession, validShared);
+      }
+      return validSession ?? validShared;
     } catch {
       return null;
     }
@@ -323,6 +390,7 @@ export class IdleTimeoutService implements OnDestroy {
     if (typeof window === 'undefined') return;
     try {
       window.sessionStorage.setItem(this.lastHeartbeatKey, String(at));
+      window.localStorage.setItem(this.sharedHeartbeatKey, String(at));
     } catch {
       /* storage unavailable */
     }
@@ -334,12 +402,18 @@ export class IdleTimeoutService implements OnDestroy {
     try {
       window.sessionStorage.removeItem(this.lastActivityKey);
       window.sessionStorage.removeItem(this.lastHeartbeatKey);
+      window.localStorage.removeItem(this.sharedActivityKey);
+      window.localStorage.removeItem(this.sharedHeartbeatKey);
     } catch {
       /* ignore */
     }
     if (this.trailingHeartbeatTimer) {
       clearTimeout(this.trailingHeartbeatTimer);
       this.trailingHeartbeatTimer = null;
+    }
+    if (this.heartbeatRetryTimer) {
+      clearTimeout(this.heartbeatRetryTimer);
+      this.heartbeatRetryTimer = null;
     }
   }
 

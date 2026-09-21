@@ -135,23 +135,23 @@
         </button>
         <div class="mobile-sub-nav" [class.open]="activeMegaMenu === 'tracks'">
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
-            <span class="material-symbols-outlined" style="color:#38bdf8">data_object</span>
+            <span class="material-symbols-outlined track-icon-coding">data_object</span>
             {{ contentService.copy('menu.coding.name', 'Coding & Algorithms') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
-            <span class="material-symbols-outlined" style="color:#00e676">memory</span>
+            <span class="material-symbols-outlined track-icon-robotics">memory</span>
             {{ contentService.copy('menu.robotics.name', 'Robotics & IoT') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
-            <span class="material-symbols-outlined" style="color:#ab47bc">model_training</span>
+            <span class="material-symbols-outlined track-icon-ai">model_training</span>
             {{ contentService.copy('menu.ai.name', 'Artificial Intelligence') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
-            <span class="material-symbols-outlined" style="color:#ff1744">security</span>
+            <span class="material-symbols-outlined track-icon-cyber">security</span>
             {{ contentService.copy('menu.cyber.name', 'Networking & Cybersecurity CTF') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
-            <span class="material-symbols-outlined" style="color:#ffab00">tips_and_updates</span>
+            <span class="material-symbols-outlined track-icon-innovation">tips_and_updates</span>
             {{ contentService.copy('menu.innovation.name', 'Open Innovation') }}
           </a>
         </div>
@@ -190,7 +190,7 @@
       <div *ngFor="let slide of slides; let i = index" class="slide-item" [class.active]="i === activeSlideIndex"
         [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'">
         <!-- Uploaded Video Background -->
-        <video *ngIf="slide.video && i === activeSlideIndex" [src]="slide.video" [poster]="slide.image" muted="muted" [muted]="true" autoplay playsinline loop preload="metadata"
+        <video *ngIf="slide.video && i === activeSlideIndex" [src]="slide.video" [poster]="slide.image" muted="muted" [muted]="true" autoplay [attr.playsinline]="''" [attr.webkit-playsinline]="''" loop preload="metadata"
           class="slide-video-bg" (error)="onVideoError($event)"></video>
 
         <!-- Browser-Native Image & Animation Background -->
@@ -309,7 +309,7 @@
           <h2 class="featured-comp-title">{{ featuredCompetition.title }}</h2>
           <div class="featured-comp-tags">
             <span class="comp-tag comp-tag-track">
-              <span class="material-symbols-outlined" style="font-size:14px;">{{ trackIcon(featuredCompetition.track)
+              <span class="material-symbols-outlined comp-tag-icon">{{ trackIcon(featuredCompetition.track)
                 }}</span>
               {{ featuredCompetition.track | titlecase }}
             </span>
@@ -317,13 +317,13 @@
               {{ featuredCompetition.type | titlecase }}
             </span>
             <span class="comp-tag comp-tag-prize" *ngIf="featuredCompetition.prize">
-              <span class="material-symbols-outlined" style="font-size:14px;">workspace_premium</span>
+              <span class="material-symbols-outlined comp-tag-icon">workspace_premium</span>
               {{ featuredCompetition.prize }}
             </span>
           </div>
         </div>
         <div class="featured-comp-teams-pill">
-          <span class="material-symbols-outlined" style="font-size:18px;">groups</span>
+          <span class="material-symbols-outlined comp-teams-icon">groups</span>
           {{ featuredCompetition.teams }}{{ featuredCompetition.maxTeams ? '/' + featuredCompetition.maxTeams : '' }}
         </div>
       </div>
@@ -432,7 +432,10 @@
       <div class="comp-carousel-dots" *ngIf="gridCompetitions.length > 1">
         <button class="comp-carousel-dot" *ngFor="let comp of gridCompetitions; let i = index"
                 [class.active]="i === activeCompSlideIndex" (click)="goToCompSlide(i)"
-                [attr.aria-label]="'Go to slide ' + (i + 1)"></button>
+                title="Go to slide" [title]="'Go to slide ' + (i + 1)"
+                [attr.aria-label]="'Go to slide ' + (i + 1)">
+          <span class="sr-only">Slide {{ i + 1 }}</span>
+        </button>
       </div>
     </div>
   </section>
@@ -504,7 +507,7 @@
           <div class="card-content">
             <h3>{{ contentService.copy('about.card1.title', 'Statement of Operation') }}</h3>
             <p>{{ contentService.copy('about.card1.body', "We build and run Ghana's premier National Technology and Innovation (NTI) Championship, integrating high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas, we turn classrooms into innovation labs.") }}</p>
-            <a (click)="scrollToSection('tracks')" class="read-more-link" style="cursor:pointer">
+            <a (click)="scrollToSection('tracks')" class="read-more-link">
               <span>{{ contentService.copy('about.card1.link', 'Experience the Tracks') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
@@ -520,7 +523,7 @@
           <div class="card-content">
             <h3>{{ contentService.copy('about.card2.title', 'Why Support Champions?') }}</h3>
             <p>{{ contentService.copy('about.card2.body', 'A thriving nation depends on scientific literacy and technical Innovations. Your support supplies physical robotics kits, funds regional travels, provides scholarships, and empowers students to build Technology careers and local solutions.') }}</p>
-            <a (click)="openSupportModal('team')" class="read-more-link" style="cursor: pointer;">
+            <a (click)="openSupportModal('team')" class="read-more-link">
               <span>{{ contentService.copy('about.card2.link', 'Sponsor Now') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
@@ -585,7 +588,8 @@
            [queryParams]="{ story: displayStories[0].id }"
            class="editorial-hero-card" *ngIf="displayStories[0] as heroStory">
           <div class="hero-img-wrap">
-            <img [src]="heroStory.image" [alt]="heroStory.title"
+            <img [src]="heroStory.image" alt="Editorial Story Image" [alt]="heroStory.title"
+                 title="Editorial Story Image" [title]="heroStory.title"
                  onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
             <div class="hero-overlay"></div>
             <span class="hero-tag" [class]="heroStory.tagColor">{{ heroStory.tag }}</span>
@@ -624,7 +628,8 @@
              [queryParams]="{ story: story.id }"
              class="editorial-secondary-card">
             <div class="sec-img-wrap">
-              <img [src]="story.image" [alt]="story.title"
+              <img [src]="story.image" alt="Editorial Story Image" [alt]="story.title"
+                   title="Editorial Story Image" [title]="story.title"
                    onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
               <span class="sec-tag" [class]="story.tagColor">{{ story.tag }}</span>
             </div>
@@ -665,7 +670,7 @@
           <span *ngFor="let w of (contentService.copy('philosophy.heading', 'Learn. Innovate. Build.').split(' ')); let i = index"
                 class="animated-word" [ngClass]="'w' + ((i % 3) + 1)">{{ w }} </span>
         </h2>
-        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">{{ contentService.copy('philosophy.desc', 'A glimpse into the real faces and moments that define our pursuit of excellence.') }}</p>
+        <p class="scroll-animate fade-up philosophy-desc">{{ contentService.copy('philosophy.desc', 'A glimpse into the real faces and moments that define our pursuit of excellence.') }}</p>
       </div>
       <div class="philosophy-grid">
         <div *ngFor="let card of contentService.philosophyCards" class="philosophy-card">
@@ -683,10 +688,10 @@
   <!-- ══════════════════════════════════════════
        ALUMNI WALL OF FAME (Infinite Marquee -- admin controlled)
   ══════════════════════════════════════════ -->
-  <section class="alumni-section scroll-animate fade-up">
+  <section class="alumni-section scroll-animate fade-up" id="alumni">
     <div class="container">
       <div class="alumni-header">
-        <img src="assets/hall_of_fame_medal.webp" loading="lazy" decoding="async" class="alumni-medal-img" alt="NTIC Hall of Fame Medal">
+        <img src="assets/hall_of_fame_medal.webp" loading="lazy" decoding="async" class="alumni-medal-img" alt="NTIC Hall of Fame Medal" title="NTIC Hall of Fame Medal">
         <span class="academic-sub">{{ contentService.copy('hof.sub', 'Hall of Fame') }}</span>
         <h2>{{ contentService.copy('hof.heading', 'National Technology and Innovation Champions') }}</h2>
       </div>
@@ -698,15 +703,14 @@
         <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass"
           [class.is-group]="isGroupEntry(entry)">
           <div class="alumni-avatar">
-            <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
-              loading="lazy" decoding="async"
-              style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
+            <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" alt="School Logo" [alt]="entry.school + ' Logo'"
+              title="School Logo" [title]="entry.school + ' Logo'"
+              loading="lazy" decoding="async" class="alumni-school-logo">
             <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
-            <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
-              style="font-size:32px;">groups</span>
+            <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined alumni-groups-icon">groups</span>
           </div>
           <div class="alumni-info">
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div class="alumni-name-row">
               <strong>{{ entry.name }}</strong>
               <span *ngIf="isGroupEntry(entry)" class="squad-tag-badge">SQUAD</span>
             </div>
@@ -717,14 +721,14 @@
             <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
               <span class="material-symbols-outlined trigger-icon">groups</span>
               <span>{{ getMembers(entry).length }} Team Members</span>
-              <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">arrow_forward</span>
+              <span class="material-symbols-outlined alumni-chevron-icon">arrow_forward</span>
 
               <!-- Hover Popover Panel -->
               <div class="alumni-members-popover">
                 <div class="popover-header">
                   <div class="popover-header-icon">
-                    <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'" loading="lazy" decoding="async">
-                    <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                    <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" alt="School Logo" [alt]="entry.school + ' Logo'" title="School Logo" [title]="entry.school + ' Logo'" loading="lazy" decoding="async">
+                    <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined popover-groups-icon">groups</span>
                   </div>
                   <div>
                     <div class="popover-title">{{ entry.name }} Roster</div>
@@ -753,15 +757,14 @@
           <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card"
             [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
             <div class="alumni-avatar">
-              <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
-                loading="lazy" decoding="async"
-                style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
+              <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" alt="School Logo" [alt]="entry.school + ' Logo'"
+                title="School Logo" [title]="entry.school + ' Logo'"
+                loading="lazy" decoding="async" class="alumni-school-logo">
               <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
-              <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
-                style="font-size:32px;">groups</span>
+              <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined alumni-groups-icon">groups</span>
             </div>
             <div class="alumni-info">
-              <div style="display:flex; align-items:center; gap:8px;">
+              <div class="alumni-name-row">
                 <strong>{{ entry.name }}</strong>
                 <span *ngIf="isGroupEntry(entry)" class="squad-tag-badge">SQUAD</span>
               </div>
@@ -772,14 +775,14 @@
               <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
                 <span class="material-symbols-outlined trigger-icon">groups</span>
                 <span>{{ getMembers(entry).length }} Team Members</span>
-                <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">arrow_forward</span>
+                <span class="material-symbols-outlined alumni-chevron-icon">arrow_forward</span>
 
                 <!-- Hover Popover Panel -->
                 <div class="alumni-members-popover">
                   <div class="popover-header">
                     <div class="popover-header-icon">
-                      <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'" loading="lazy" decoding="async">
-                      <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                      <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" alt="School Logo" [alt]="entry.school + ' Logo'" title="School Logo" [title]="entry.school + ' Logo'" loading="lazy" decoding="async">
+                      <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined popover-groups-icon">groups</span>
                     </div>
                     <div>
                       <div class="popover-title">{{ entry.name }} Roster</div>
@@ -1072,7 +1075,7 @@
             <div class="browser-actions-ghost"></div>
           </div>
           <div class="preview-canvas-wrapper">
-            <iframe #previewFrame class="preview-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe #previewFrame class="preview-iframe" sandbox="allow-scripts allow-same-origin" title="Interactive Code Sandbox Preview"></iframe>
           </div>
         </div>
       </div>
@@ -1373,7 +1376,7 @@
         <span class="star s20"></span>
       </div>
     </div>
-    <div class="container" style="position: relative; z-index: 2;">
+    <div class="container relative-z2">
       <div class="section-header-academic text-center">
         <span class="academic-sub">{{ contentService.copy('map.sub', 'National Reach') }}</span>
         <h2>{{ contentService.copy('map.heading', 'All 16 Regions Competing') }}</h2>
@@ -1544,7 +1547,7 @@
             </div>
             <div class="spotlight-stat-box" *ngIf="activeRd.schools === 0">
               <div class="ss-label"><span class="material-symbols-outlined">schedule</span> Roster Status</div>
-              <div class="ss-value" style="font-size:13.5px; color:var(--on-surface-variant,#94a3b8); font-weight:600;">School nominations open</div>
+              <div class="ss-value ss-value-open">School nominations open</div>
             </div>
 
             <div class="spotlight-stat-box">
@@ -1556,7 +1559,7 @@
             <div class="spotlight-meter-wrap">
               <div class="sm-header">
                 <span>National Qualification Heat</span>
-                <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span style="font-weight:400; opacity:0.7;">({{
+                <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span class="sm-sub-count">({{
                     activeRd.schools }}/{{ activeRd.target }} {{ activeRd.schools === 1 ? 'school' : 'schools' }})</span></strong>
               </div>
               <div class="sm-track">
@@ -1678,7 +1681,7 @@
 
       <div class="footer-top-crest">
         <div class="footer-seal-wrap">
-          <div class="footer-seal">
+          <div class="footer-seal" (click)="openLegalModal('ges', $event)" role="button" tabindex="0" title="Republic of Ghana Accredited Competition - View Accreditation">
             <span class="material-symbols-outlined">menu_book</span>
             <span class="seal-text">VERITAS</span>
           </div>
@@ -1693,47 +1696,58 @@
         <div class="footer-brief">
           <p>{{ contentService.copy('footer.brief', 'Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct pathways from local innovation to global engineering programs.') }}</p>
           <div class="contact-info-ac">
-            <p>{{ contentService.copy('footer.contact', 'Contact: info@ntic.gov.gh') }}</p>
-            <p>{{ contentService.copy('footer.hotline', 'Hotline: +233 (0) 302 999 888') }}</p>
+            <p>
+              <a href="mailto:info@ntic.gov.gh" class="footer-link-active">
+                <span class="material-symbols-outlined footer-contact-icon">mail</span>
+                <span>{{ contentService.copy('footer.contact', 'Contact: info@ntic.gov.gh') }}</span>
+              </a>
+            </p>
+            <p>
+              <a href="tel:+233302999888" class="footer-link-active">
+                <span class="material-symbols-outlined footer-contact-icon">call</span>
+                <span>{{ contentService.copy('footer.hotline', 'Hotline: +233 (0) 302 999 888') }}</span>
+              </a>
+            </p>
           </div>
         </div>
 
         <div class="footer-nav-col">
           <h4>{{ contentService.copy('footer.col1.title', 'Competition Info') }}</h4>
           <ul>
-            <li><a href="#about">About The Heats</a></li>
-            <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
+            <li><a (click)="scrollToSection('about')" role="button" tabindex="0">About The Heats</a></li>
+            <li><a (click)="scrollToSection('tracks')" role="button" tabindex="0">Tracks &amp; Syllabus</a></li>
             <li><a routerLink="/leaderboard">School Leaderboard</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'rules')">Rules &amp; Regulations</a></li>
+            <li><a routerLink="/competitions">Championship Schedule</a></li>
+            <li><a (click)="openLegalModal('rules', $event)" role="button" tabindex="0">Rules &amp; Regulations</a></li>
           </ul>
         </div>
 
         <div class="footer-nav-col">
           <h4>{{ contentService.copy('footer.col2.title', 'Portals') }}</h4>
           <ul>
-            <li><a href="#" (click)="openInfoModal($event, 'courses')">Student Courses</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'instructor')">Certified Instructors</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'mentor')">Competition Mentors</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'admin')">School Admins Directory</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'rubrics')">Judge Rubrics</a></li>
+            <li><a (click)="openPortalLink('courses', $event)" role="button" tabindex="0">Student Courses</a></li>
+            <li><a (click)="openPortalLink('instructor', $event)" role="button" tabindex="0">Certified Instructors</a></li>
+            <li><a (click)="openPortalLink('mentor', $event)" role="button" tabindex="0">Competition Mentors</a></li>
+            <li><a (click)="openPortalLink('admin', $event)" role="button" tabindex="0">School Admins Directory</a></li>
+            <li><a (click)="openPortalLink('rubrics', $event)" role="button" tabindex="0">Judge Rubrics</a></li>
           </ul>
         </div>
 
         <div class="footer-nav-col">
           <h4>{{ contentService.copy('footer.col3.title', 'Legal & Admin') }}</h4>
           <ul>
-            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">&#64;Qliq_Integrations</a></li>
-            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">Ghana Education Service</a></li>
-            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">GDPA Data Shield Notice</a></li>
-            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">Terms &amp; Accessibility</a></li>
+            <li><a (click)="openLegalModal('qliq', $event)" role="button" tabindex="0">&#64;Qliq_Integrations</a></li>
+            <li><a (click)="openLegalModal('ges', $event)" role="button" tabindex="0">Ghana Education Service</a></li>
+            <li><a (click)="openLegalModal('gdpa', $event)" role="button" tabindex="0">GDPA Data Shield Notice</a></li>
+            <li><a (click)="openLegalModal('terms', $event)" role="button" tabindex="0">Terms &amp; Accessibility</a></li>
           </ul>
         </div>
       </div>
 
-      <div class="footer-bottom-bar" style="flex-direction: column; gap: 16px; align-items: center;">
+      <div class="footer-bottom-bar footer-bottom-bar-col">
         <p>{{ contentService.copy('footer.copyright', '© 2026 @Qliq_Integrations. All rights reserved.') }}</p>
 
-        <div class="data-shield-badge">
+        <div class="data-shield-badge" (click)="openLegalModal('gdpa', $event)" role="button" tabindex="0" title="Click to view Act 843 Data Shield Compliance">
           <span class="ds-icon">🛡️</span>
           <span>GDPA PROTECTED · Act 843</span>
         </div>
@@ -1741,76 +1755,288 @@
 
     </div>
   </footer>
+
   <!-- ══════════════════════════════════════════
-       REGION DETAIL MODAL
+       INSTITUTIONAL LEGAL & GOVERNANCE MODAL
   ══════════════════════════════════════════ -->
-  <div class="support-modal-backdrop" [class.open]="regionDetailModal.open" (click)="closeRegionModal()">
-    <div class="support-modal-card" style="max-width: 480px;" (click)="$event.stopPropagation()">
-      <button class="close-modal-btn" (click)="closeRegionModal()">
+  <div class="support-modal-backdrop" [class.open]="legalModal.open" (click)="closeLegalModal()">
+    <div class="support-modal-card legal-dialog-card" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeLegalModal()" aria-label="Close modal">
         <span class="material-symbols-outlined">close</span>
       </button>
 
-      <div class="modal-header-ac" style="text-align:center; padding-bottom:0;">
-        <span class="crest-icon material-symbols-outlined"
-          style="font-size:40px; color:var(--primary);">apartment</span>
-        <h3 style="margin:8px 0 0;">{{ regionDetailModal.rd?.name }} Region</h3>
+      <div class="legal-modal-header">
+        <div class="legal-modal-crest">
+          <span class="material-symbols-outlined">
+            {{ legalModal.activeTab === 'rules' ? 'gavel' :
+               legalModal.activeTab === 'rubrics' ? 'fact_check' :
+               legalModal.activeTab === 'gdpa' ? 'shield' :
+               legalModal.activeTab === 'terms' ? 'description' :
+               legalModal.activeTab === 'ges' ? 'account_balance' : 'terminal' }}
+          </span>
+        </div>
+        <div class="legal-modal-title-wrap">
+          <h3>
+            {{ legalModal.activeTab === 'rules' ? 'Championship Rules & Regulations' :
+               legalModal.activeTab === 'rubrics' ? 'Judge Rubrics & Scoring Standards' :
+               legalModal.activeTab === 'gdpa' ? 'Data Protection Notice (Act 843)' :
+               legalModal.activeTab === 'terms' ? 'Terms of Service & Accessibility' :
+               legalModal.activeTab === 'ges' ? 'Ghana Education Service (GES) Accreditation' :
+               '@Qliq_Integrations Architecture' }}
+          </h3>
+          <p class="legal-modal-subtitle">Official Policy, Technical Standards &amp; Institutional Governance</p>
+        </div>
       </div>
 
-      <div style="padding:24px 28px;">
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-          <div
-            style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
-            <div
-              style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">
-              Schools</div>
-            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{
-              regionDetailModal.rd?.schools }}</div>
+      <!-- Tab Navigation -->
+      <div class="legal-modal-tabs">
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'rules'" (click)="setLegalTab('rules')">
+          <span class="material-symbols-outlined">gavel</span>
+          <span>Rules</span>
+        </button>
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'rubrics'" (click)="setLegalTab('rubrics')">
+          <span class="material-symbols-outlined">fact_check</span>
+          <span>Rubrics</span>
+        </button>
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'gdpa'" (click)="setLegalTab('gdpa')">
+          <span class="material-symbols-outlined">shield</span>
+          <span>Data Shield</span>
+        </button>
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'terms'" (click)="setLegalTab('terms')">
+          <span class="material-symbols-outlined">description</span>
+          <span>Terms</span>
+        </button>
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'ges'" (click)="setLegalTab('ges')">
+          <span class="material-symbols-outlined">account_balance</span>
+          <span>GES</span>
+        </button>
+        <button class="legal-tab-btn" [class.active]="legalModal.activeTab === 'qliq'" (click)="setLegalTab('qliq')">
+          <span class="material-symbols-outlined">terminal</span>
+          <span>&#64;Qliq</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="legal-modal-body">
+        <!-- RULES TAB -->
+        <div *ngIf="legalModal.activeTab === 'rules'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">verified</span>
+            <div>
+              <strong>Official 2026 Academic Tournament Bylaws</strong>
+              <p>Governing Junior High, Senior High, and Technical &amp; Vocational tracks across all 16 Ghanaian regions.</p>
+            </div>
           </div>
-          <div
-            style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
-            <div
-              style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">
-              Squads</div>
-            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{
-              getRegionTeams(regionDetailModal.rd) }}</div>
-          </div>
+          <ol class="legal-ordered-list">
+            <li>
+              <strong>Team Composition &amp; Eligibility:</strong>
+              Each squad must comprise 3 to 5 accredited students enrolled in a recognized Ghanaian educational institution, under the direct supervision of one certified Teacher Coach/Mentor.
+            </li>
+            <li>
+              <strong>Originality &amp; Code Integrity:</strong>
+              All submitted source code, CAD models, and algorithmic designs must be original student creations. Autonomous plagiarism analysis and source diff verification are executed on all submission queues.
+            </li>
+            <li>
+              <strong>Hardware &amp; Tooling Standards:</strong>
+              Teams in the Embedded Systems &amp; Robotics track must build with pre-approved open-architecture kits (Arduino, Raspberry Pi, ESP32, and Lego EV3/SPIKE platforms). Proprietary pre-assembled commercial industrial systems are prohibited.
+            </li>
+            <li>
+              <strong>Tournament Time Limits:</strong>
+              Heat sprints are strictly capped at 180 minutes. Repository commit timestamps are synchronized authoritatively against server NTP clocks; late pushes are rejected automatically.
+            </li>
+            <li>
+              <strong>Judicial Escalation &amp; Appeals:</strong>
+              Formal score inquiries must be lodged in writing via the School Coach within 60 minutes of heat publication for expedited review by the National Arbiter Board.
+            </li>
+          </ol>
         </div>
 
-        <div
-          style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; margin-bottom:20px;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">emoji_events</span>
-            <span
-              style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b); text-transform:uppercase; letter-spacing:0.04em;">Regional
-              Champion</span>
+        <!-- RUBRICS TAB -->
+        <div *ngIf="legalModal.activeTab === 'rubrics'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">analytics</span>
+            <div>
+              <strong>Standardized 100-Point Evaluation Matrix</strong>
+              <p>Calibrated across technical rigor, practical Ghanaian relevance, and engineering execution.</p>
+            </div>
           </div>
-          <div style="font-size:16px; font-weight:800; color:var(--on-surface,#0f172a);">{{
-            regionDetailModal.rd?.topSchool }}</div>
-          <div style="font-size:12px; color:var(--on-surface-variant,#94a3b8); margin-top:2px;">Specialization: {{
-            regionDetailModal.rd?.specialty }}</div>
-        </div>
-
-        <div style="margin-bottom:24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b);">Qualification
-              Progress</span>
-            <strong style="font-size:12px; color:var(--primary);">{{ getRegionQualifiedPct(regionDetailModal.rd)
-              }}%</strong>
-          </div>
-          <div
-            style="width:100%; height:6px; background:var(--surface-container-high,#e2e8f0); border-radius:3px; overflow:hidden;">
-            <div [style.width.%]="getRegionQualifiedPct(regionDetailModal.rd)"
-              style="height:100%; background:linear-gradient(90deg, var(--primary), #0056b3); border-radius:3px; transition:width 0.6s ease;">
+          <div class="rubrics-grid">
+            <div class="rubric-card">
+              <div class="rubric-badge">30 Pts</div>
+              <h4>Technical Execution &amp; Code Quality</h4>
+              <p>System architecture, algorithm efficiency, automated test coverage, resilience to edge cases, and documentation clarity.</p>
+            </div>
+            <div class="rubric-card">
+              <div class="rubric-badge">25 Pts</div>
+              <h4>Innovation &amp; Local Applicability</h4>
+              <p>Novelty of the solution in addressing national priorities: agriculture (AgriTech), solar/clean energy, local languages, or healthcare logistics.</p>
+            </div>
+            <div class="rubric-card">
+              <div class="rubric-badge">25 Pts</div>
+              <h4>Engineering Feasibility &amp; Reliability</h4>
+              <p>Working prototype stability, physical circuit cleanliness, power budget management, and fault tolerance during live bench tests.</p>
+            </div>
+            <div class="rubric-card">
+              <div class="rubric-badge">20 Pts</div>
+              <h4>Presentation &amp; Defense Rigor</h4>
+              <p>Clarity of live demonstration, depth of individual student technical responses during adversarial judge questioning.</p>
             </div>
           </div>
         </div>
 
-        <div style="display:flex; gap:10px;">
-          <button class="btn btn-crimson" style="flex:1;" (click)="closeRegionModal(); openSupportModal('team');">
+        <!-- GDPA TAB -->
+        <div *ngIf="legalModal.activeTab === 'gdpa'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">security</span>
+            <div>
+              <strong>Ghana Data Protection Act (Act 843) Compliance</strong>
+              <p>NTIC is committed to the highest standards of student privacy and sovereign institutional data custody.</p>
+            </div>
+          </div>
+          <ul class="legal-unordered-list">
+            <li><strong>Data Controller Registration:</strong> Operating under active registration with the Data Protection Commission (DPC) of the Republic of Ghana.</li>
+            <li><strong>Sovereign Infrastructure:</strong> All student records, telemetry, and identity credentials are stored exclusively on Ghana-hosted, encrypted cloud instances.</li>
+            <li><strong>Zero Commercial Resale:</strong> Student academic data, code submissions, and school records are strictly never rented, sold, or shared with commercial brokers or advertising networks.</li>
+            <li><strong>Cryptographic Safeguards:</strong> AES-256 database-level encryption at rest, TLS 1.3 in transit with enforced HSTS and strict role-based access control (RBAC).</li>
+            <li><strong>Student Rights:</strong> Students, parents, and schools retain the right to inspect, export, rectify, or purge their data by written request to <a href="mailto:privacy@ntic.gov.gh" class="legal-contact-link">privacy&#64;ntic.gov.gh</a>.</li>
+          </ul>
+        </div>
+
+        <!-- TERMS TAB -->
+        <div *ngIf="legalModal.activeTab === 'terms'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">handshake</span>
+            <div>
+              <strong>Terms of Participation &amp; Accessibility Standards</strong>
+              <p>Scholastic honor code and universal digital inclusion guarantees.</p>
+            </div>
+          </div>
+          <ul class="legal-unordered-list">
+            <li><strong>Scholastic Honor Code:</strong> All student competitors, mentors, and judges pledge to uphold the principles of fair play, academic integrity, and mutual respect between rival institutions.</li>
+            <li><strong>Intellectual Property Rights:</strong> Students and participating schools retain 100% of the underlying intellectual property (IP) and patents for their submissions. NTIC is granted a non-exclusive license solely for educational and showcase broadcasts with mandatory attribution.</li>
+            <li><strong>WCAG 2.1 AA Accessibility:</strong> The NTIC platform interface conforms to W3C Web Content Accessibility Guidelines, guaranteeing high-contrast compliance, full keyboard navigability, and screen-reader compatibility.</li>
+            <li><strong>Sanctions &amp; Disqualification:</strong> Plagiarism, unauthorized mentor coding during live heats, or disrespectful conduct triggers immediate disqualified heat status and school notification.</li>
+          </ul>
+        </div>
+
+        <!-- GES TAB -->
+        <div *ngIf="legalModal.activeTab === 'ges'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">school</span>
+            <div>
+              <strong>Ghana Education Service (GES) Accreditation</strong>
+              <p>Official nationwide academic endorsement under the Ministry of Education.</p>
+            </div>
+          </div>
+          <p class="legal-body-text">The National Technology and Innovation Championship (NTIC) operates in formal partnership with the Ghana Education Service (GES) to accelerate STEM/TVET excellence across second-cycle and basic institutions nationwide.</p>
+          <div class="ges-credentials-box">
+            <div class="ges-cred-item">
+              <span class="material-symbols-outlined">verified_user</span>
+              <span><strong>Endorsement:</strong> National STEM &amp; Digital Skills Priority Calendar</span>
+            </div>
+            <div class="ges-cred-item">
+              <span class="material-symbols-outlined">assignment_turned_in</span>
+              <span><strong>Curriculum Alignment:</strong> GES Computing &amp; Pre-Engineering Syllabi</span>
+            </div>
+            <div class="ges-cred-item">
+              <span class="material-symbols-outlined">military_tech</span>
+              <span><strong>Certificates:</strong> Nationally recognized honors co-signed with GES Directorates</span>
+            </div>
+          </div>
+          <div class="legal-action-bar">
+            <a href="https://ges.gov.gh" target="_blank" rel="noopener noreferrer" class="btn btn-subtle btn-compact">
+              <span>Visit Official GES Portal</span>
+              <span class="material-symbols-outlined icon-sm">open_in_new</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- QLIQ TAB -->
+        <div *ngIf="legalModal.activeTab === 'qliq'" class="legal-content-pane">
+          <div class="legal-callout">
+            <span class="material-symbols-outlined">developer_mode</span>
+            <div>
+              <strong>Platform Engineering &amp; Technology Partnership</strong>
+              <p>Enterprise infrastructure designed and maintained by &#64;Qliq_Integrations.</p>
+            </div>
+          </div>
+          <p class="legal-body-text">The NTIC Platform is architected by Qliq Integrations, delivering high-concurrency real-time scoring, secure authentication gateways, automated tournament matchmaking, and live regional telemetry dashboards.</p>
+          <div class="qliq-specs-grid">
+            <div class="qliq-spec">
+              <strong>Architecture:</strong> Python FastAPI Async Backend + Angular 18 Reactive Client
+            </div>
+            <div class="qliq-spec">
+              <strong>Database:</strong> PostgreSQL with High-Availability Replication
+            </div>
+            <div class="qliq-spec">
+              <strong>Security:</strong> OWASP Level 2 Compliant, TLS 1.3, Rate-Limited Endpoints
+            </div>
+            <div class="qliq-spec">
+              <strong>Deployment:</strong> Edge-accelerated sovereign Ghanaian cloud nodes
+            </div>
+          </div>
+          <div class="legal-action-bar">
+            <a href="https://qliqintegrations.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-compact">
+              <span>Visit Qliq Integrations</span>
+              <span class="material-symbols-outlined icon-sm">open_in_new</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       REGION DETAIL MODAL
+  ══════════════════════════════════════════ -->
+  <div class="support-modal-backdrop" [class.open]="regionDetailModal.open" (click)="closeRegionModal()">
+    <div class="support-modal-card region-dialog-card" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeRegionModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <div class="modal-header-ac region-modal-header">
+        <span class="crest-icon material-symbols-outlined region-crest-icon">apartment</span>
+        <h3 class="region-title">{{ regionDetailModal.rd?.name }} Region</h3>
+      </div>
+
+      <div class="region-modal-body">
+        <div class="region-stat-grid">
+          <div class="region-stat-box">
+            <div class="region-stat-lbl">Schools</div>
+            <div class="region-stat-num">{{ regionDetailModal.rd?.schools }}</div>
+          </div>
+          <div class="region-stat-box">
+            <div class="region-stat-lbl">Squads</div>
+            <div class="region-stat-num">{{ getRegionTeams(regionDetailModal.rd) }}</div>
+          </div>
+        </div>
+
+        <div class="region-champ-box">
+          <div class="region-champ-row">
+            <span class="material-symbols-outlined region-champ-icon">emoji_events</span>
+            <span class="region-champ-lbl">Regional Champion</span>
+          </div>
+          <div class="region-champ-name">{{ regionDetailModal.rd?.topSchool }}</div>
+          <div class="region-champ-sub">Specialization: {{ regionDetailModal.rd?.specialty }}</div>
+        </div>
+
+        <div class="region-progress-section">
+          <div class="region-progress-row">
+            <span class="region-progress-lbl">Qualification Progress</span>
+            <strong class="region-progress-pct">{{ getRegionQualifiedPct(regionDetailModal.rd) }}%</strong>
+          </div>
+          <div class="region-progress-track">
+            <div class="region-progress-fill-bar" [style.width.%]="getRegionQualifiedPct(regionDetailModal.rd)"></div>
+          </div>
+        </div>
+
+        <div class="region-buttons-row">
+          <button class="btn btn-crimson btn-flex1" (click)="closeRegionModal(); openSupportModal('team');">
             <span class="material-symbols-outlined">volunteer_activism</span>
             <span>Sponsor This Region</span>
           </button>
-          <button class="btn btn-subtle" style="flex:1;" (click)="closeRegionModal(); openSupportModal('suggestion');">
+          <button class="btn btn-subtle btn-flex1" (click)="closeRegionModal(); openSupportModal('suggestion');">
             <span class="material-symbols-outlined">chat</span>
             <span>Contact Committee</span>
           </button>
@@ -2010,28 +2236,10 @@
             <span>Remember this device</span>
           </label>
 
-          <div style="text-align:center;margin-top:12px;">
+          <div class="lm-forgot-wrap">
             <button type="button" class="lm-forgot-link" (click)="openForgotPassword()">Forgot password?</button>
           </div>
         </form>
-
-        <!-- Telemetry Console -->
-        <div class="telemetry-console" *ngIf="telemetryLogs.length > 0">
-          <div class="console-header">
-            <span class="console-dot red"></span>
-            <span class="console-dot yellow"></span>
-            <span class="console-dot green"></span>
-            <span class="console-title">Security Telemetry</span>
-          </div>
-          <div class="console-body">
-            <div class="console-line" *ngFor="let log of telemetryLogs">
-              <span class="console-prompt">&gt;</span> {{ log }}
-            </div>
-            <div class="console-line active-line">
-              <span class="console-prompt">&gt;</span><span class="console-cursor"></span>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
@@ -2501,19 +2709,18 @@
                             <span class="train-metric-label">Loss</span>
                             <div class="train-metric-bar-bg">
                               <div class="train-metric-bar-fill loss"
-                                [style.width.%]="getLossBarWidth(arenaState.ai?.loss)" style="background: #f43f5e;">
+                                [style.width.%]="getLossBarWidth(arenaState.ai?.loss)">
                               </div>
                             </div>
-                            <span class="train-metric-value" style="color:#f43f5e">{{ arenaState.ai?.loss }}</span>
+                            <span class="train-metric-value loss">{{ arenaState.ai?.loss }}</span>
                           </div>
                           <div class="train-metric-row">
                             <span class="train-metric-label">Epoch</span>
                             <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill"
-                                [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
-                                style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
+                              <div class="train-metric-bar-fill epoch"
+                                [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"></div>
                             </div>
-                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch
+                            <span class="train-metric-value epoch">{{ arenaState.ai?.epoch
                               }}<small>/50</small></span>
                           </div>
                         </div>
@@ -2556,16 +2763,16 @@
                     <!-- Left: Network Monitor -->
                     <div class="cockpit-left">
                       <div class="cyber-monitor">
-                        <div class="cyber-monitor-header" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                          <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="cyber-monitor-header cyber-header-row">
+                          <div class="cyber-title-wrap">
                             <span class="material-symbols-outlined">security</span>
                             <span>Network Security Monitor</span>
                           </div>
-                          <div style="display:flex; align-items:center; gap:10px;">
+                          <div class="cyber-actions-wrap">
                             <button class="live-sim-toggle-btn" 
                                     [class.active]="arenaState.cyber?.liveSimRunning"
                                     (click)="triggerArenaAction('cyber', 'toggle_sim')">
-                              <span class="material-symbols-outlined" style="font-size:15px; vertical-align:middle;">{{ arenaState.cyber?.liveSimRunning ? 'pause_circle' : 'play_circle' }}</span>
+                              <span class="material-symbols-outlined cyber-icon-sm">{{ arenaState.cyber?.liveSimRunning ? 'pause_circle' : 'play_circle' }}</span>
                               <span>{{ arenaState.cyber?.liveSimRunning ? 'Pause Stream' : '⚡ Live Hack Stream' }}</span>
                             </button>
                             <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
@@ -2650,7 +2857,7 @@
                           </button>
                         </div>
 
-                        <div class="controls-btn-group" style="margin-top: 10px">
+                        <div class="controls-btn-group controls-btn-group-spaced">
                           <button class="ctrl-btn ctrl-cyber-counter" (click)="triggerArenaAction('cyber', 'counter_attack')" title="Launch automated counter-hack strike against attacker C2 server">
                             <span class="material-symbols-outlined">bolt</span>
                             <span>ATTACK BACK</span>
@@ -2672,19 +2879,19 @@
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Honeypots Trapped</div>
-                            <div class="perf-value" style="color: #ffea00">{{ arenaState.cyber?.honeypotDecoys || 5 }}</div>
+                            <div class="perf-value val-honeypot">{{ arenaState.cyber?.honeypotDecoys || 5 }}</div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Counter-Strikes</div>
-                            <div class="perf-value" style="color: #ff1744">{{ arenaState.cyber?.counterStrikes || 0 }}</div>
+                            <div class="perf-value val-counter">{{ arenaState.cyber?.counterStrikes || 0 }}</div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">CTF Score</div>
-                            <div class="perf-value" style="color: #00e676">{{ arenaState.cyber?.ctfScore || 850 }}</div>
+                            <div class="perf-value val-score">{{ arenaState.cyber?.ctfScore || 850 }}</div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Encryption</div>
-                            <div class="perf-value" style="font-size:0.65rem">{{ arenaState.cyber?.encryption }}</div>
+                            <div class="perf-value val-cipher">{{ arenaState.cyber?.encryption }}</div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Active Threats</div>
@@ -2788,7 +2995,7 @@
                             <span>Wind Boost</span>
                           </button>
                         </div>
-                        <div class="controls-btn-group" style="margin-top: 8px">
+                        <div class="controls-btn-group controls-btn-group-tight">
                           <button class="ctrl-btn ctrl-innovation-hospital"
                             (click)="triggerArenaAction('innovation', 'hospital')">
                             <span class="material-symbols-outlined">local_hospital</span>

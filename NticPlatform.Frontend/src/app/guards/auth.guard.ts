@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { clearAllAuthValues, getAuthValue } from '../services/session.util';
 import { environment } from '../../environments/environment';
+import { SessionSyncService } from '../services/session-sync.service';
 import {
   ALL_ROLES, ADMIN_ROLES, COMPETITION_ROLES, GRADING_ROLES, LMS_ROLES,
   STUDENT_ADMIN_ROLES, CONTENT_ROLES, unionRoles,
@@ -50,6 +51,8 @@ const ROLE_ACCESS: Record<string, readonly string[]> = {
   // so the panel must keep hiding mutation controls from them.
   'records':            unionRoles(STUDENT_ADMIN_ROLES, COMPETITION_ROLES, CONTENT_ROLES),
 
+  // Cycle management. Must match COMPETITION_ROLES: the competitions API rejects
+  // everyone else, so admitting more roles here only produces 403 walls.
   'user-management':    ADMIN_ROLES,
 };
 
@@ -71,8 +74,17 @@ export function resetVerifiedRoleCache(): void {
 
 export const authGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
-  const token = getAuthValue('activeUserToken');
+  let token = getAuthValue('activeUserToken');
   const path = (state.url || '').replace(/^\//, '').split('?')[0].split('#')[0];
+
+  // If this tab opened with an empty sessionStorage, attempt in-memory cross-tab handoff
+  if (!token) {
+    const sessionSync = inject(SessionSyncService);
+    const restored = await sessionSync.requestSessionFromExistingTabs(250);
+    if (restored) {
+      token = getAuthValue('activeUserToken');
+    }
+  }
 
   const allowed = ROLE_ACCESS[path];
 

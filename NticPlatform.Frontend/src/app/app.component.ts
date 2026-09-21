@@ -14,6 +14,7 @@ import { ChatbotService } from './services/chatbot.service';
 import { ApiService, MyProfile } from './services/api.service';
 import { CurrentUserService } from './services/current-user.service';
 import { IdleTimeoutService } from './services/idle-timeout.service';
+import { SessionSyncService } from './services/session-sync.service';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
 import { CommandPaletteComponent } from './components/command-palette/command-palette.component';
 
@@ -39,6 +40,7 @@ import { FormsModule } from '@angular/forms';
 export class AppComponent implements OnInit, OnDestroy {
   private readonly appUpdate = inject(AppUpdateService);
   private readonly idleTimeout = inject(IdleTimeoutService);
+  private readonly sessionSync = inject(SessionSyncService);
   title = 'ntic-frontend';
   isLandingPage = true;
   isRouteLoading = false;
@@ -50,6 +52,23 @@ export class AppComponent implements OnInit, OnDestroy {
   private idleSubs: { unsubscribe(): void }[] = [];
   private idleWarningOpen = false;
   private isHandlingSessionExpiry = false;
+  private readonly onStorageLogout = (e: StorageEvent) => {
+    if (e.key === 'ntic_cross_tab_logout' && getAuthValue('activeUserToken')) {
+      this.performLocalSignOut('You were signed out from another tab.');
+    }
+  };
+  private readonly onBeforeUnload = () => {
+    try {
+      const path = (window.location.pathname || '/').split('?')[0].split('#')[0];
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (y > 0) {
+        sessionStorage.setItem(`ntic_scroll_pos_${path}`, y.toString());
+      }
+    } catch (_) {}
+  };
+  private readonly onBeforeInstallPrompt = (e: Event) => {
+    e.preventDefault();
+  };
   private scrollRafPending = false;
   private scrollListener = () => {
     if (this.scrollRafPending) return;
@@ -57,6 +76,7 @@ export class AppComponent implements OnInit, OnDestroy {
     requestAnimationFrame(() => {
       this.scrollRafPending = false;
       this.checkScroll();
+      this.onWindowScroll();
     });
   };
 
@@ -121,32 +141,6 @@ export class AppComponent implements OnInit, OnDestroy {
           parsedUrl === '/leaderboard' ||
           parsedUrl === '/competitions' ||
           parsedUrl === '/talent';
-      }
-
-      // Visiting the public homepage ends a NON-remembered session, so
-      // credentials don't linger on shared/public machines.
-      //
-      // "Remember this device" does NOT persist the session -- it only stores
-      // the username so the login form can prefill it (see
-      // saveRememberedCredentials). The token itself is always sessionStorage
-      // only. All the flag does here is opt out of this homepage sign-out.
-      //
-      // This used to happen SILENTLY, which made it a trap: /competitions and
-      // /leaderboard render the public nav for non-admin roles, and its only route
-      // back was "Home" -> "/". A student or judge clicking Home mid-task was
-      // signed out with no explanation. The nav now offers "Back to my dashboard"
-      // instead, and if this path is still taken the user is told why.
-      if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId') && !hasRememberedDevice()) {
-        clearAllAuthValues();
-        resetVerifiedRoleCache();
-        this.currentUserService.clear();
-        this.currentUser = null;
-        this.chatbot.resetSession();
-        this.dialogService.toast(
-          'You were signed out because you returned to the public homepage. Tick "Remember this device" at sign-in to stay signed in here.',
-          'info',
-          8000,
-        );
       }
 
       // If transitioning to a DIFFERENT page, clear that page's saved scroll and reset to top.
@@ -270,19 +264,10 @@ export class AppComponent implements OnInit, OnDestroy {
       .pipe(throttleTime(8000))
       .subscribe(failure => this.dialogService.toast(failure.message, 'error', 9000));
     if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', () => this.onWindowScroll(), { passive: true });
-      window.addEventListener('beforeunload', () => {
-        try {
-          const path = (window.location.pathname || '/').split('?')[0].split('#')[0];
-          const y = window.scrollY || document.documentElement.scrollTop || 0;
-          if (y > 0) {
-            sessionStorage.setItem(`ntic_scroll_pos_${path}`, y.toString());
-          }
-        } catch (_) {}
-      });
-      window.addEventListener('beforeinstallprompt', (e: Event) => {
-        e.preventDefault();
-      });
+      window.addEventListener('scroll', this.scrollListener, { passive: true });
+      window.addEventListener('beforeunload', this.onBeforeUnload);
+      window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
+      window.addEventListener('storage', this.onStorageLogout);
 
       // ── Universal Dissolution of Splash Screen ──
       const applySplashCopy = () => {
@@ -378,6 +363,27 @@ export class AppComponent implements OnInit, OnDestroy {
       })
     );
     this.idleTimeout.start();
+
+    // In-memory cross-tab session synchronization (Zero localStorage token storage)
+    this.sessionSync.init();
+    this.idleSubs.push(
+      this.sessionSync.sessionRevoked$.subscribe(() => {
+        if (getAuthValue('activeUserToken')) {
+          this.performLocalSignOut('You were signed out from another tab.');
+        }
+      })
+    );
+    if (!getAuthValue('activeUserToken')) {
+      this.sessionSync.requestSessionFromExistingTabs(250).then(restored => {
+        if (restored) {
+          this.loadUserProfile();
+          const authedRole = getAuthValue('activeRoleId');
+          if (authedRole && (this.lastNavigatedPath === '/leaderboard' || this.lastNavigatedPath === '/competitions' || this.lastNavigatedPath === '/news' || this.lastNavigatedPath === '/talent')) {
+            this.isLandingPage = false;
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -483,12 +489,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (typeof window !== 'undefined') {
-      window.removeEventListener('scroll', this.scrollListener, true);
+      window.removeEventListener('scroll', this.scrollListener);
+      window.removeEventListener('beforeunload', this.onBeforeUnload);
+      window.removeEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
+      window.removeEventListener('storage', this.onStorageLogout);
     }
+    if (this.scrollSaveTimer) clearTimeout(this.scrollSaveTimer);
     if (this.ticketPollTimer) clearInterval(this.ticketPollTimer);
     this.idleSubs.forEach(s => s.unsubscribe());
     this.idleSubs = [];
     this.idleTimeout.stop();
+    this.sessionSync.destroy();
     this.closeMobileSidebar();
   }
 
@@ -559,6 +570,16 @@ export class AppComponent implements OnInit, OnDestroy {
     if (token) {
       this.apiService.logout(token).subscribe({ next: () => {}, error: () => {} });
     }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ntic_cross_tab_logout', String(Date.now()));
+      } catch (_) {}
+    }
+    this.sessionSync.broadcastLogout();
+    this.performLocalSignOut(notice);
+  }
+
+  private performLocalSignOut(notice?: string): void {
     clearAllAuthValues();
     // Drop the guard's server-verified role. Without this, signing back in as a
     // different user in the same tab reused the previous user's role.

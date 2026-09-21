@@ -45,6 +45,45 @@ export function clearAllAuthValues(): void {
   purgeLegacyStoredPassword();
 }
 
+export interface SessionSnapshot {
+  activeRoleId: string | null;
+  activeUserEmail: string | null;
+  activeUserTicket: string | null;
+  activeUserToken: string | null;
+  activeUserName: string | null;
+}
+
+/**
+ * Returns an in-memory snapshot of all active authentication credentials,
+ * or null if no valid user token is held in this tab's sessionStorage.
+ */
+export function getSessionSnapshot(): SessionSnapshot | null {
+  const token = getAuthValue('activeUserToken');
+  if (!token) return null;
+  return {
+    activeRoleId: getAuthValue('activeRoleId'),
+    activeUserEmail: getAuthValue('activeUserEmail'),
+    activeUserTicket: getAuthValue('activeUserTicket'),
+    activeUserToken: token,
+    activeUserName: getAuthValue('activeUserName'),
+  };
+}
+
+/**
+ * Restores session credentials from an in-memory snapshot into sessionStorage.
+ * Never writes bearer tokens to localStorage.
+ */
+export function restoreSessionSnapshot(snapshot: Partial<SessionSnapshot>): void {
+  AUTH_KEYS.forEach(key => {
+    const val = snapshot[key];
+    if (typeof val === 'string' && val.length > 0) {
+      setAuthValue(key, val);
+    } else {
+      clearAuthValue(key);
+    }
+  });
+}
+
 /**
  * Deletes session values left in localStorage by builds that used to persist
  * them there.

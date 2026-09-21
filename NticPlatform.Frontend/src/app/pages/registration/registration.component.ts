@@ -17,6 +17,7 @@ import { CurrentUserService } from '../../services/current-user.service';
 import { AppSelectComponent } from '../../components/app-select/app-select.component';
 import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 import { SafePipe } from '../../pipes/safe.pipe';
+import { IdleTimeoutService } from '../../services/idle-timeout.service';
 
 @Component({
   selector: 'app-registration',
@@ -2047,7 +2048,8 @@ setAuthValue('activeUserEmail', email);
     private apiService: ApiService,
     private otpService: OtpService,
     private currentUserService: CurrentUserService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private idleTimeout: IdleTimeoutService
   ) {}
 
   logoUrls: Record<string, string> = {};
@@ -2143,6 +2145,7 @@ setAuthValue('activeUserEmail', email);
       return;
     }
 
+    if (this.isLoggingIn) return;
     this.isLoggingIn = true;
     this.loginError = '';
 
@@ -2185,6 +2188,9 @@ setAuthValue('activeUserEmail', email);
       setAuthValue('activeUserToken', user.token);
     }
     this.currentUserService.refresh().subscribe();
+
+    this.idleTimeout.setIdleLimitSeconds(user.session_idle_seconds ?? user.sessionIdleSeconds);
+    this.idleTimeout.reset();
 
     // Save or clear remembered credentials without auto-logging in
     saveRememberedCredentials(credential, this.loginPassword.trim(), this.rememberDevice);
