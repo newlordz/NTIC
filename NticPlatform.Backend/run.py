@@ -39,7 +39,7 @@ except Exception:
     settings = _FallbackSettings()
 
 ADMIN_EMAIL = "admin@ntic.org.gh"
-DEFAULT_ADMIN_PASSWORD = os.getenv("NTIC_ADMIN_PASSWORD", "NticChampionship#2026").strip()
+DEFAULT_ADMIN_PASSWORD = os.getenv("NTIC_ADMIN_PASSWORD", "Admin@Ntic2026!").strip()  # pragma: allowlist secret
 
 def _safe_get_db():
     try:
