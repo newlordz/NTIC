@@ -946,6 +946,10 @@ def run_standalone_server(port):
                                 _ensure_schools(cur)
                                 conn.commit()
                         except Exception as sch_seed_err:
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
                             print(f"[run.py] Inline school seed notice: {sch_seed_err}", flush=True)
 
                         cur.execute(
