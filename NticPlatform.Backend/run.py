@@ -114,8 +114,9 @@ def _safe_init_db():
             try:
                 cur = conn.cursor()
                 cur.execute("SELECT id FROM users WHERE lower(email) = %s OR id = 'USR-000'", (ADMIN_EMAIL.lower(),))
-                if not cur.fetchone():
-                    from app.security import hash_password
+                row = cur.fetchone()
+                from app.security import hash_password
+                if not row:
                     cur.execute(
                         "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) "
                         "VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
@@ -123,6 +124,13 @@ def _safe_init_db():
                     )
                     conn.commit()
                     print(f"[run.py] Bootstrapped super-admin: {ADMIN_EMAIL}", flush=True)
+                else:
+                    cur.execute(
+                        "UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s OR lower(email) = %s",
+                        (hash_password(DEFAULT_ADMIN_PASSWORD), row[0], ADMIN_EMAIL.lower())
+                    )
+                    conn.commit()
+                    print(f"[run.py] Synchronized admin password for: {ADMIN_EMAIL}", flush=True)
                 cur.close()
             except Exception as admin_err:
                 print(f"[run.py] Super-admin bootstrap error: {admin_err}", flush=True)
