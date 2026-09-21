@@ -47,11 +47,13 @@ def _get_connect_kwargs(timeout=10) -> dict:
 def init_postgres_db():
     """Ensure NticPlatformDb database and schema exist."""
     import os
+    psycopg2 = None
+    ISOLATION_LEVEL_AUTOCOMMIT = None
     try:
         import psycopg2
         from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     except ImportError:
-        psycopg2 = None
+        pass
 
     # ── Diagnose available connection vars ──────────────────────────
     # Never log raw values: DATABASE_URL contains the password in the
@@ -88,25 +90,26 @@ def init_postgres_db():
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
-    try:
-        admin_conn = psycopg2.connect(
-            host=db_host,
-            port=settings.POSTGRES_PORT,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-            dbname="postgres",
-            connect_timeout=10,
-        )
-        admin_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cur = admin_conn.cursor()
-        cur.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (settings.POSTGRES_DB,))
-        if not cur.fetchone():
-            logger.info(f"Creating PostgreSQL database: {settings.POSTGRES_DB}...")
-            cur.execute(f'CREATE DATABASE "{settings.POSTGRES_DB}"')
-        cur.close()
-        admin_conn.close()
-    except Exception as e:
-        logger.warning(f"Note checking/creating database: {e}")
+    if psycopg2 and ISOLATION_LEVEL_AUTOCOMMIT is not None:
+        try:
+            admin_conn = psycopg2.connect(
+                host=db_host,
+                port=settings.POSTGRES_PORT,
+                user=settings.POSTGRES_USER,
+                password=settings.POSTGRES_PASSWORD,
+                dbname="postgres",
+                connect_timeout=10,
+            )
+            admin_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+            cur = admin_conn.cursor()
+            cur.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (settings.POSTGRES_DB,))
+            if not cur.fetchone():
+                logger.info(f"Creating PostgreSQL database: {settings.POSTGRES_DB}...")
+                cur.execute(f'CREATE DATABASE "{settings.POSTGRES_DB}"')
+            cur.close()
+            admin_conn.close()
+        except Exception as e:
+            logger.warning(f"Note checking/creating database: {e}")
 
     conn = get_db_connection()
     if not conn:
@@ -1269,7 +1272,7 @@ def get_db_connection():
 
     # Fallback pure-Python pg8000 driver (essential for WASIX / WebAssembly)
     try:
-        import pg8000.dbapi
+        import pg8000.dbapi  # pyright: ignore[reportMissingImports]  # type: ignore
         import ssl
         for use_ssl in [ssl.create_default_context(), None]:
             try:
