@@ -1,4 +1,4 @@
-<div class="lms-manager-container">
+<div class="lms-manager-container" [class.studio-view-active]="currentView === 'module_studio'">
   
   <!-- ════════════════════════════════════════════════════════════
        VIEW 1: COURSES HUB & MANAGEMENT DESK (MAIN HUB)
@@ -1747,11 +1747,13 @@
     *ngIf="currentView === 'module_studio'"
     [course]="activeDetailCourse"
     [module]="activeDetailModule"
+    [courseModules]="activeDetailCourse ? getModulesForCourse(activeDetailCourse.id) : []"
     [initialBlocks]="moduleBlocks"
     [isSaving]="isSaving"
     [saveError]="saveError"
     [isReadOnly]="isAdmin"
     (exit)="exitModuleStudio()"
+    (navigateModule)="switchModuleStudioFromChild($event)"
     (save)="handleSaveModuleStudioFromChild($event)"
     (triggerAiQuiz)="handleTriggerAiQuizFromChild($event)"
     (uploadFile)="handleUploadBlockFileFromChild($event)">

@@ -20,6 +20,19 @@
         </span>
         <span class="crumb-separator">/</span>
         <span class="current-crumb">{{ isReadOnly ? 'Audit Module Units' : (module ? 'Edit Module' : 'New Module') }}</span>
+
+        <!-- Sequential Module Stepper -->
+        <div class="module-stepper-control" *ngIf="courseModules && courseModules.length > 1">
+          <button type="button" class="btn btn-xs btn-stepper" [disabled]="!prevModule" (click)="goToPrevModule()" [title]="prevModule ? ('Go to previous unit: ' + prevModule.title) : 'First module in course'">
+            <span class="material-symbols-outlined">chevron_left</span>
+            <span>Prev</span>
+          </button>
+          <span class="stepper-count">{{ currentModuleIndex >= 0 ? (currentModuleIndex + 1) : 1 }} of {{ courseModules.length }}</span>
+          <button type="button" class="btn btn-xs btn-stepper" [disabled]="!nextModule" (click)="goToNextModule()" [title]="nextModule ? ('Go to next unit: ' + nextModule.title) : 'Last module in course'">
+            <span>Next</span>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
       </div>
 
       <!-- Header Action Buttons -->
@@ -69,6 +82,22 @@
           <span class="material-symbols-outlined">visibility</span>
           <span>Read-Only Audit Mode</span>
         </div>
+
+        <!-- Room / Canvas Width Toggle (Available in both Inspection and Authoring modes) -->
+        <div class="studio-btn-group studio-width-control" title="Canvas room and inspection width">
+          <button type="button" class="btn btn-sm btn-studio-utility" [class.active-mode]="canvasWidthMode === 'normal'" (click)="setCanvasWidth('normal')" title="Standard Reading Room (900px)">
+            <span class="material-symbols-outlined">stay_current_portrait</span>
+            <span class="btn-label">Standard</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-studio-utility" [class.active-mode]="canvasWidthMode === 'wide'" (click)="setCanvasWidth('wide')" title="Expanded Inspection Room (1320px)">
+            <span class="material-symbols-outlined">desktop_windows</span>
+            <span class="btn-label">Wide Room</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-studio-utility" [class.active-mode]="canvasWidthMode === 'full'" (click)="setCanvasWidth('full')" title="Full Edge-to-Edge Room (100%)">
+            <span class="material-symbols-outlined">fullscreen</span>
+            <span class="btn-label">Full Width</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -78,8 +107,8 @@
           <span class="material-symbols-outlined">{{ isReadOnly ? 'visibility' : 'design_services' }}</span>
         </div>
         <div>
-          <h1>{{ isReadOnly ? 'Curriculum Module Inspection' : (module ? 'Curriculum Module Studio' : 'Author Curriculum Module') }}</h1>
-          <p class="studio-subtext">{{ isReadOnly ? 'Inspect lesson structure, reading guides, diagrams, media, and quizzes in student-ready format.' : 'Craft interactive lessons with rich theory, flexible images, videos, checkpoint quizzes, and coding challenges.' }}</p>
+          <h1>{{ isReadOnly ? (moduleForm.title || module?.title || 'Curriculum Module') : (module ? 'Curriculum Module Studio' : 'Author Curriculum Module') }}</h1>
+          <p class="studio-subtext">{{ isReadOnly ? ('Inspecting Unit #' + (moduleForm.order || module?.order || 1) + ' · Lesson structure, reading guides, diagrams, media, and quizzes in student-ready format.') : 'Craft interactive lessons with rich theory, flexible images, videos, checkpoint quizzes, and coding challenges.' }}</p>
         </div>
       </div>
 
@@ -111,10 +140,10 @@
     <span>{{ saveError }}</span>
   </div>
 
-  <!-- ── Top Parameter Strip: Module Title & Sequence Order ── -->
-  <div class="studio-config-bar">
+  <!-- ── Top Parameter Strip: Module Title & Sequence Order (Authoring Mode Only) ── -->
+  <div class="studio-config-bar" *ngIf="!isReadOnly">
     <div class="config-field title-field">
-      <label>Module Title <strong class="text-danger" *ngIf="!isReadOnly">*</strong></label>
+      <label>Module Title <strong class="text-danger">*</strong></label>
       <input
         type="text"
         [(ngModel)]="moduleForm.title"
@@ -122,14 +151,14 @@
         placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry"
         class="studio-inline-input title-input"
         [class.input-error]="saveError && !moduleForm.title.trim()"
-        [disabled]="isCanvasPreviewMode || isReadOnly"
+        [disabled]="isCanvasPreviewMode"
       />
       <span class="text-xs text-danger" *ngIf="saveError && !moduleForm.title.trim()">A module title is required.</span>
     </div>
 
     <div class="config-field order-field">
       <label>Sequence Order</label>
-      <input type="number" min="1" [(ngModel)]="moduleForm.order" (ngModelChange)="scheduleAutoSave(false)" class="studio-inline-input" [disabled]="isCanvasPreviewMode || isReadOnly" />
+      <input type="number" min="1" [(ngModel)]="moduleForm.order" (ngModelChange)="scheduleAutoSave(false)" class="studio-inline-input" [disabled]="isCanvasPreviewMode" />
     </div>
   </div>
 
@@ -286,7 +315,7 @@
       </div>
 
       <!-- ── EDIT MODE CANVAS ── -->
-      <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode">
+      <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode" [ngClass]="'width-' + canvasWidthMode">
         <!-- Clean Empty State when 0 blocks -->
         <div class="empty-module-canvas" *ngIf="moduleBlocks.length === 0">
           <div class="empty-canvas-icon">
@@ -904,7 +933,7 @@
       </div>
 
       <!-- ── LIVE LEARNER SIMULATION PREVIEW ── -->
-      <div class="canvas-preview-pane fade-in" *ngIf="isCanvasPreviewMode">
+      <div class="canvas-preview-pane fade-in" *ngIf="isCanvasPreviewMode" [ngClass]="'width-' + canvasWidthMode">
         <div class="sim-classroom-header">
           <div class="sim-header-info">
             <div class="sim-live-badge">
@@ -1053,6 +1082,42 @@
                   <span class="material-symbols-outlined">info</span>
                   <span>{{ blk.tableFooterNotes }}</span>
                 </div>
+              </div>
+            </div>
+
+            <!-- File / Document Reference Block -->
+            <div *ngIf="blk.type === 'file'" class="sim-file-unit mb-4">
+              <div class="sim-file-card">
+                <div class="sim-file-icon-box">
+                  <span class="material-symbols-outlined">description</span>
+                </div>
+                <div class="sim-file-details">
+                  <h4 class="sim-file-title">{{ blk.title || blk.fileName || 'Curriculum Reference Material' }}</h4>
+                  <p class="sim-file-instructions" *ngIf="blk.content">{{ blk.content }}</p>
+                  <div class="sim-file-meta">
+                    <span class="sim-file-pill" *ngIf="blk.fileName">{{ blk.fileName }}</span>
+                    <span class="sim-file-pill" *ngIf="blk.fileSize">{{ blk.fileSize }}</span>
+                  </div>
+                </div>
+                <div class="sim-file-action">
+                  <a *ngIf="blk.url" [href]="blk.url" target="_blank" rel="noopener noreferrer" class="sim-file-btn" download>
+                    <span class="material-symbols-outlined">download</span>
+                    <span>Download</span>
+                  </a>
+                  <span *ngIf="!blk.url" class="sim-file-pending">Document not yet uploaded</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section Break Gate -->
+            <div *ngIf="blk.type === 'break'" class="sim-break-unit my-4">
+              <div class="sim-break-divider">
+                <div class="sim-break-line"></div>
+                <div class="sim-break-badge">
+                  <span class="material-symbols-outlined">splitscreen</span>
+                  <span>{{ blk.breakLabel || 'Section Checkpoint · Complete Prior Units to Proceed' }}</span>
+                </div>
+                <div class="sim-break-line"></div>
               </div>
             </div>
           </div>

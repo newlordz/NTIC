@@ -94,15 +94,46 @@ export interface ModuleBlock {
 export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
   @Input() course: any = null;
   @Input() module: any = null;
+  @Input() courseModules: any[] = [];
   @Input() initialBlocks: ModuleBlock[] = [];
   @Input() isSaving = false;
   @Input() saveError = '';
   @Input() isReadOnly = false;
 
   @Output() exit = new EventEmitter<void>();
+  @Output() navigateModule = new EventEmitter<any>();
   @Output() save = new EventEmitter<{ moduleForm: any; blocks: ModuleBlock[] }>();
   @Output() triggerAiQuiz = new EventEmitter<{ block?: ModuleBlock; isNew?: boolean }>();
   @Output() uploadFile = new EventEmitter<{ file: File; block: ModuleBlock }>();
+
+  get currentModuleIndex(): number {
+    if (!this.module || !this.courseModules?.length) return -1;
+    return this.courseModules.findIndex(m => m.id === this.module.id);
+  }
+
+  get prevModule(): any | null {
+    const idx = this.currentModuleIndex;
+    return (idx > 0) ? this.courseModules[idx - 1] : null;
+  }
+
+  get nextModule(): any | null {
+    const idx = this.currentModuleIndex;
+    return (idx >= 0 && idx < this.courseModules.length - 1) ? this.courseModules[idx + 1] : null;
+  }
+
+  goToPrevModule(): void {
+    if (this.prevModule) {
+      if (!this.isReadOnly) this.performAutoSave();
+      this.navigateModule.emit(this.prevModule);
+    }
+  }
+
+  goToNextModule(): void {
+    if (this.nextModule) {
+      if (!this.isReadOnly) this.performAutoSave();
+      this.navigateModule.emit(this.nextModule);
+    }
+  }
 
   moduleForm: { id?: string; courseId?: string; title: string; order: number; description: string } = {
     title: '',
@@ -117,6 +148,14 @@ export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
   isPaletteCollapsed = false;
   isGeneratingAiQuiz: Record<string, boolean> = {};
   isUploadingBlockFile: Record<string, boolean> = {};
+
+  // ── Canvas Room & Width Mode ────────────────────────────────
+  canvasWidthMode: 'normal' | 'wide' | 'full' = 'wide';
+
+  setCanvasWidth(mode: 'normal' | 'wide' | 'full'): void {
+    this.canvasWidthMode = mode;
+    this.cdr.markForCheck();
+  }
 
   // ── Auto-Save & Draft Recovery State ────────────────────────
   autoSaveStatus: 'idle' | 'unsaved' | 'saving' | 'saved' = 'idle';
@@ -182,6 +221,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
     if (this.isReadOnly) {
       this.isCanvasPreviewMode = true;
       this.isPaletteCollapsed = true;
+      this.canvasWidthMode = 'wide';
     } else {
       this.checkForSavedDraft();
     }
@@ -197,6 +237,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['isReadOnly'] && this.isReadOnly) {
       this.isCanvasPreviewMode = true;
       this.isPaletteCollapsed = true;
+      this.canvasWidthMode = 'wide';
     }
   }
 

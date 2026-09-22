@@ -13,7 +13,7 @@ email/WhatsApp notifications.
 ## Repository layout
 
 | Path | What it is | Stack |
-|---|---|---|
+| --- | --- | --- |
 | `NticPlatform.Backend/` | REST API + WebSocket server | Python 3.12, FastAPI, PostgreSQL (raw `psycopg2`) |
 | `NticPlatform.Frontend/` | Single-page application (PWA) | Angular 17, TypeScript, SCSS |
 | `stitch_national_ntic_competition_platform/` | Static design mockups | HTML + Tailwind (reference only, not deployed) |
@@ -48,7 +48,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-API on **http://localhost:5000**. Interactive docs at `/docs` — enabled only when
+API on **<http://localhost:5000>**. Interactive docs at `/docs` — enabled only when
 `NTIC_DEV_RELOAD=true` (which `run_backend.bat` sets) or when you set
 `NTIC_ENABLE_DOCS=true`. They are off in production by default because they
 publish the full schema of every endpoint.
@@ -73,7 +73,7 @@ cp src/environments/environment.prod.ts src/environments/environment.local.ts
 npm run dev
 ```
 
-App on **http://localhost:4200**, proxying `/api` to port 5000 via
+App on **<http://localhost:4200>**, proxying `/api` to port 5000 via
 `proxy.conf.json`.
 
 ### Windows helper scripts
@@ -215,12 +215,12 @@ creation rather than during an incident. `restore` refuses to run without
 
 Schedule it — nightly at 03:00, keeping 14 days:
 
-```
+```sh
 # Linux/macOS: crontab -e
 0 3 * * * cd /srv/ntic && .venv/bin/python scripts/db_backup.py backup --upload --prune 14 >> /var/log/ntic-backup.log 2>&1
 ```
 
-```
+```cmd
 :: Windows: Task Scheduler
 schtasks /create /tn "NTIC DB Backup" /sc daily /st 03:00 ^
   /tr "C:\path\to\.venv\Scripts\python.exe C:\path\to\scripts\db_backup.py backup --prune 14"

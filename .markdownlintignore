@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+.git/
+dist/
+build/
+.agents/scratch/
+.system_generated/
+NticPlatform.Frontend/dist/
+NticPlatform.Frontend/.angular/
+backups/
+stitch_national_ntic_competition_platform/
+dev_m.md

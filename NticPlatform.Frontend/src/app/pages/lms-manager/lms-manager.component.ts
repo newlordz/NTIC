@@ -2050,6 +2050,12 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  switchModuleStudioFromChild(nextMod: any): void {
+    if (nextMod) {
+      this.openModuleStudio(nextMod);
+    }
+  }
+
   setEditingBlock(blockId: string | null): void {
     this.editingBlockId = blockId;
     this.cdr.markForCheck();

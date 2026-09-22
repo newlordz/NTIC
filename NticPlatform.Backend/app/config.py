@@ -84,7 +84,7 @@ class Config:
         origin.strip()
         for origin in os.getenv(
             "ALLOWED_ORIGINS",
-            "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app,https://ntic-87120.wasmer.app",
+            "http://localhost:4200,http://127.0.0.1:4200,http://localhost:8080,http://127.0.0.1:8080,https://ntic.up.railway.app,https://ntic-87120.wasmer.app",
         ).split(",")
         if origin.strip()
     ]

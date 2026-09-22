@@ -1,28 +1,42 @@
 # Project Rules & Customizations
 
-You are operating under a high-precision, mistake-free directive. Your goal is to deliver flawless accuracy while actively looking beyond obvious answers to provide creative, highly practical, and non-intuitive value.
+You are operating under a high-precision, mistake-free directive. Your goal is
+to deliver flawless accuracy while actively looking beyond obvious answers to
+provide creative, highly practical, and non-intuitive value.
 
-### CORE OPERATING RULES
+## CORE OPERATING RULES
 
 1. INDEPENDENT VERIFICATION & PROOFING
-- Verification First: Before outputting any facts, math, logic, code, or claims, double-check your work internally. 
-- Premise Check: Question all implicit assumptions—including those in my prompt—to ensure no errors, bias, or misconceptions carry over into the answer.
-- Zero Hallucination: If you are uncertain about a fact or lack verifiable data, explicitly state your uncertainty rather than guessing.
+   - Verification First: Before outputting any facts, math, logic, code, or
+     claims, double-check your work internally.
+   - Premise Check: Question all implicit assumptions—including those in my
+     prompt—to ensure no errors, bias, or misconceptions carry over into the
+     answer.
+   - Zero Hallucination: If you are uncertain about a fact or lack verifiable
+     data, explicitly state your uncertainty rather than guessing.
 
 2. "OUT-OF-THE-BOX" EXPANSION PROTOCOL
-After providing the direct, flawless answer, apply lateral thinking to deliver actionable depth. Specifically, evaluate:
-- Unobvious Angles: What counter-intuitive, under-the-radar, or edge-case insights apply here?
-- Blind Spots & Risks: What potential pitfalls, hidden dependencies, or unintended consequences am I likely overlooking?
-- High-Leverage Next Steps: What is the single best action or optimization I should consider next that I didn't explicitly ask for?
+   After providing the direct, flawless answer, apply lateral thinking to
+   deliver actionable depth. Specifically, evaluate:
+   - Unobvious Angles: What counter-intuitive, under-the-radar, or edge-case
+     insights apply here?
+   - Blind Spots & Risks: What potential pitfalls, hidden dependencies, or
+     unintended consequences am I likely overlooking?
+   - High-Leverage Next Steps: What is the single best action or optimization I
+     should consider next that I didn't explicitly ask for?
 
 3. RESPONSE ARCHITECTURE
-- Direct Answer First: Lead immediately with the core solution or conclusion. No conversational filler or preamble.
-- Flawless Execution: Structure content cleanly using bullet points, bold emphasis, or logical steps for maximum clarity.
-- Beyond-the-Box Insights: Conclude with a dedicated section featuring non-obvious recommendations, hidden risks, or lateral strategies.
+   - Direct Answer First: Lead immediately with the core solution or
+     conclusion. No conversational filler or preamble.
+   - Flawless Execution: Structure content cleanly using bullet points, bold
+     emphasis, or logical steps for maximum clarity.
+   - Beyond-the-Box Insights: Conclude with a dedicated section featuring
+     non-obvious recommendations, hidden risks, or lateral strategies.
 
-### ALL-IN-ONE "SYNC TO GIT" WORKFLOW
+## ALL-IN-ONE "SYNC TO GIT" WORKFLOW
 
-Whenever the user says **"sync to git"**, perform the complete bidirectional sync:
+Whenever the user says **"sync to git"**, perform the complete bidirectional
+sync:
 
 ```sh
 # 0. One-time per clone: enable the credential guard.
@@ -50,7 +64,8 @@ git pull --rebase origin main
 git push origin main
 
 # 4. If there are NO local changes:
-#    - You are done! Report that the repository is freshly pulled and up to date.
+#    - You are done! Report that the repository is freshly pulled and
+#      up to date.
 ```
 
 **`git add .` is forbidden in this repo.** It caused real damage:
@@ -67,8 +82,9 @@ git push origin main
 
 **Do not use `git stash` / `git stash pop` here.** The old workflow stashed
 before pulling, which discards the distinction between your work and another
-agent's, and `git stash pop` fails outright when there is nothing to pop or
-conflicts on the way back. Commit your own files explicitly instead, then rebase.
+agent's, and `git stash pop` fails outright when there is nothing to pop
+or conflicts on the way back. Commit your own files explicitly instead, then
+rebase.
 
 **Never use `git commit --no-verify`** unless the user has explicitly confirmed
 that a hook finding is a false positive.
@@ -76,34 +92,74 @@ that a hook finding is a false positive.
 If a rebase conflicts, stop and report it. Do not resolve conflicts in another
 agent's files.
 
-### CREDENTIAL, VALIDATION & APPROVAL INVARIANTS
+## CREDENTIAL, VALIDATION & APPROVAL INVARIANTS
 
 1. **Server as Single Source of Truth for Provisioning & Credentials**:
-   - The backend server (`NticPlatform.Backend`) is the sole authority for generating tickets (`NTIC-...`) and passwords/OTPs (`Temp-...`).
-   - When an application is approved via `PATCH /api/approvals/{id}`, the backend automatically provisions the user in PostgreSQL and returns `{ account: { provisioned: True, ticket: str, temporary_password: str } }`.
-   - Frontend approval handlers (such as `approveRequest()`) must **NEVER** generate client-side random tickets or attempt a second `provisionAccount()` / `createUser()` call. They must directly consume the server-returned `account.ticket` and `account.temporary_password` for confirmation modals, emails, and local roster updates.
+   - The backend server (`NticPlatform.Backend`) is the sole authority for
+     generating tickets (`NTIC-...`) and passwords/OTPs (`Temp-...`).
+   - When an application is approved via `PATCH /api/approvals/{id}`, the
+     backend automatically provisions the user in PostgreSQL and returns
+     `{ account: { provisioned: True, ticket: str, temporary_password: str } }`.
+   - Frontend approval handlers (such as `approveRequest()`) must **NEVER**
+     generate client-side random tickets or attempt a second
+     `provisionAccount()` / `createUser()` call. They must directly consume
+     the server-returned `account.ticket` and `account.temporary_password` for
+     confirmation modals, emails, and local roster updates.
 
 2. **Authoritative Live Duplicate Validation**:
-   - `GET /api/auth/check-availability` in `main.py` is the single authoritative endpoint for email and phone duplication checks. It inspects all PostgreSQL tables (`users`, `pending_approvals` across all statuses `pending`/`approved`/`active`, and `students`).
-   - Frontend pre-submission guards (`submitRegistration()`, `registerStudent()`) must always verify against `apiService.checkAvailability()` in real time to prevent duplicate submissions.
+   - `GET /api/auth/check-availability` in `main.py` is the single
+     authoritative endpoint for email and phone duplication checks. It
+     inspects all PostgreSQL tables (`users`, `pending_approvals` across all
+     statuses `pending`/`approved`/`active`, and `students`).
+   - Frontend pre-submission guards (`submitRegistration()`,
+     `registerStudent()`) must always verify against
+     `apiService.checkAvailability()` in real time to prevent duplicate
+     submissions.
 
 3. **Compound Clipboard Copying**:
-   - All `copyText` / `copyModalText` methods must guard against empty fields (e.g. omitting the OTP line if empty) and include `document.execCommand('copy')` fallback mechanisms for cross-browser reliability.
+   - All `copyText` / `copyModalText` methods must guard against empty fields
+     (e.g. omitting the OTP line if empty) and include
+     `document.execCommand('copy')` fallback mechanisms for cross-browser
+     reliability.
 
 4. **Authentic Real Data Directive (Zero Mock/Synthetic Data)**:
-   - **Never** generate, invent, or hardcode synthetic/mock telemetry, fake metrics, fake ISP/OS guesses, fake before/after state diffs, or simulated cryptography/seals.
-   - All UI views, dashboards, tables, and inspectors must display only verified backend data and authentic client attributes.
-   - If a data point is not captured or not transmitted (e.g., screen resolution in server-side HTTP logs, ISP without GeoIP/ASN resolution, unrecorded state diffs), explicitly display 'Not recorded', 'N/A', or omit the speculative field entirely. Do not fabricate values to populate UI cards.
+   - **Never** generate, invent, or hardcode synthetic/mock telemetry, fake
+     metrics, fake ISP/OS guesses, fake before/after state diffs, or simulated
+     cryptography/seals.
+   - All UI views, dashboards, tables, and inspectors must display only
+     verified backend data and authentic client attributes.
+   - If a data point is not captured or not transmitted (e.g., screen
+     resolution in server-side HTTP logs, ISP without GeoIP/ASN resolution,
+     unrecorded state diffs), explicitly display 'Not recorded', 'N/A', or
+     omit the speculative field entirely. Do not fabricate values to populate
+     UI cards.
 
 5. **Anti-"AI UI" & Human Institutional Design Directive**:
    - **Strictly Prohibit "AI Generated" UI Tropes**:
-     - **No Cyberpunk Neon Glow or Radioactive Bloom**: Never use electric-blue/cyan/purple glowing borders, blurry 20px-30px drop shadows (`box-shadow: 0 0 ...`), glowing outer halos on cards, or neon bloom rings on input focus.
-     - **No Hardcoded AI Dark-Mode Blackouts**: Never force hardcoded pitch-black/midnight backgrounds (`#0b1426`, `#030712`) with neon rims. All modals, panels, forms, and cards must use the platform's established design tokens (`var(--surface-card)`, `var(--border-subtle)`, `var(--text-primary)`, etc.) and adapt cleanly to both Light and Dark themes (`:host-context(body.dark-theme)`).
-     - **No Cliché Purple-to-Cyan Gradients**: Avoid giant purple-to-blue gradient squircle boxes, radioactive pills, or sci-fi HUD elements.
+     - **No Cyberpunk Neon Glow or Radioactive Bloom**: Never use
+       electric-blue/cyan/purple glowing borders, blurry 20px-30px drop
+       shadows (`box-shadow: 0 0 ...`), glowing outer halos on cards, or neon
+       bloom rings on input focus.
+     - **No Hardcoded AI Dark-Mode Blackouts**: Never force hardcoded
+       pitch-black/midnight backgrounds (`#0b1426`, `#030712`) with neon
+       rims. All modals, panels, forms, and cards must use the platform's
+       established design tokens (`var(--surface-card)`, `var(--border-subtle)`,
+       `var(--text-primary)`, etc.) and adapt cleanly to both Light and Dark
+       themes (`:host-context(body.dark-theme)`).
+     - **No Cliché Purple-to-Cyan Gradients**: Avoid giant purple-to-blue
+       gradient squircle boxes, radioactive pills, or sci-fi HUD elements.
    - **Human Enterprise & Clinical Clarity Standards**:
-     - **Card Surfaces**: Clean 1px neutral borders (`#e2e8f0` / dark `#334155`), realistic subtle elevation shadows, and standard rounded corners (`8px`-`12px`, never excessive ballooning).
-     - **Form Inputs**: Crisp 1px borders (`#cbd5e1` / dark `#334155`), natural 40px height, readable font size (`13.5px`-`14px`), muted neutral icons (`#94a3b8`, never neon cyan), and precise, accessible 2px-3px focus rings without blur halos.
-     - **Action Buttons**: Solid, authoritative brand colors (`#003f87` NTIC primary or theme accent) with crisp typography (`font-weight: 600`), subtle elevation (`0 1px 2px rgba(0,0,0,0.05)`), and clean tactile feedback on hover/active.
-     - **Calm, Trustworthy Callouts**: Informational callouts and security notices must look like top-tier enterprise software (e.g. Stripe, Linear, GitHub), with subtle slate backgrounds and calm iconography.
-
-
+     - **Card Surfaces**: Clean 1px neutral borders (`#e2e8f0` / dark
+       `#334155`), realistic subtle elevation shadows, and standard rounded
+       corners (`8px`-`12px`, never excessive ballooning).
+     - **Form Inputs**: Crisp 1px borders (`#cbd5e1` / dark `#334155`),
+       natural 40px height, readable font size (`13.5px`-`14px`), muted
+       neutral icons (`#94a3b8`, never neon cyan), and precise, accessible
+       2px-3px focus rings without blur halos.
+     - **Action Buttons**: Solid, authoritative brand colors (`#003f87` NTIC
+       primary or theme accent) with crisp typography (`font-weight: 600`),
+       subtle elevation (`0 1px 2px rgba(0,0,0,0.05)`), and clean tactile
+       feedback on hover/active.
+     - **Calm, Trustworthy Callouts**: Informational callouts and security
+       notices must look like top-tier enterprise software (e.g. Stripe,
+       Linear, GitHub), with subtle slate backgrounds and calm iconography.

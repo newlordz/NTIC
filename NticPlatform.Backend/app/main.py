@@ -5842,7 +5842,7 @@ try:
             "WHERE s.score IS NULL "
         )
         params = []
-        if track:
+        if track and track.strip().lower() not in ("all", "all tracks", "all_tracks"):
             sql += "AND lower(COALESCE(st.track, '')) = lower(%s) "
             params.append(track)
         if competition_id:

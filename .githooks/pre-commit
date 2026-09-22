@@ -153,6 +153,36 @@ except Exception:
     esac
 done
 
+# ── 6. Markdown documentation linting ─────────────────────────────────────────
+# Validates staged markdown files using markdownlint-cli to prevent formatting
+# regressions (MD013 line length, MD001 heading increments, trailing spaces, etc.).
+MD_STAGED=""
+for f in $STAGED; do
+    case "$f" in
+        *.md)
+            MD_STAGED="$MD_STAGED $f"
+            ;;
+    esac
+done
+
+if [ -n "$MD_STAGED" ]; then
+    if command -v npx >/dev/null 2>&1; then
+        # Automatically fix mechanical formatting rules (trailing spaces, table pipes)
+        npx --yes markdownlint-cli --fix $MD_STAGED >/dev/null 2>&1
+        for f in $MD_STAGED; do
+            if [ -f "$f" ]; then
+                git add "$f"
+            fi
+        done
+
+        if ! npx --yes markdownlint-cli $MD_STAGED; then
+            echo "pre-commit: markdownlint violation(s) found in staged markdown file(s)."
+            echo "    Run 'npm run lint:md' or inspect issues above, fix them, and re-stage."
+            FAIL=1
+        fi
+    fi
+fi
+
 if [ "$FAIL" -ne 0 ]; then
     echo ""
     echo "pre-commit: commit aborted. Nothing has been staged or unstaged."

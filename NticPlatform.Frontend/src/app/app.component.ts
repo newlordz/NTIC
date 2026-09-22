@@ -103,6 +103,7 @@ export class AppComponent implements OnInit, OnDestroy {
   };
 
   private lastNavigatedPath = '';
+  private lastNavigatedUrl = '';
 
   constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService, public currentUserService: CurrentUserService) {
     this.router.events.subscribe(event => {
@@ -122,7 +123,9 @@ export class AppComponent implements OnInit, OnDestroy {
       const parsedUrl = url.split('?')[0].split('#')[0];
       const hasFragment = (event.url && event.url.includes('#')) || (event.urlAfterRedirects && event.urlAfterRedirects.includes('#'));
       const isDifferentRoute = this.lastNavigatedPath !== '' && this.lastNavigatedPath !== parsedUrl;
+      const isDifferentUrl = this.lastNavigatedUrl !== '' && this.lastNavigatedUrl !== url;
       this.lastNavigatedPath = parsedUrl;
+      this.lastNavigatedUrl = url;
 
       this.loadUserProfile();
 
@@ -143,20 +146,21 @@ export class AppComponent implements OnInit, OnDestroy {
           parsedUrl === '/talent';
       }
 
-      // If transitioning to a DIFFERENT page, clear that page's saved scroll and reset to top.
-      if (isDifferentRoute && !hasFragment && typeof window !== 'undefined') {
-        try { sessionStorage.removeItem(`ntic_scroll_pos_${parsedUrl}`); } catch (_) {}
+      // If transitioning to a DIFFERENT page or DIFFERENT tab/query, clear saved scroll and reset to top.
+      if ((isDifferentRoute || isDifferentUrl) && !hasFragment && typeof window !== 'undefined') {
+        this.isRestoringScroll = false;
+        try { sessionStorage.removeItem(`ntic_scroll_pos_${url}`); } catch (_) {}
         document.body.style.overflow = '';
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         const mainContent = document.querySelector('.main-content');
         if (mainContent) {
           mainContent.scrollTop = 0;
         }
-      } else if (!isDifferentRoute && typeof window !== 'undefined') {
-        // Same route / Page Refresh: restore exact scroll position across render frames
-        this.restoreScrollPosition(parsedUrl);
+      } else if (!isDifferentRoute && !isDifferentUrl && typeof window !== 'undefined') {
+        // Same exact URL / Page Refresh: restore exact scroll position across render frames
+        this.restoreScrollPosition(url);
       }
     });
   }
@@ -169,10 +173,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.scrollSaveTimer) clearTimeout(this.scrollSaveTimer);
     this.scrollSaveTimer = setTimeout(() => {
       try {
-        const path = (window.location.pathname || '/').split('?')[0].split('#')[0];
+        const fullUrl = (window.location.pathname + (window.location.search || '')).split('#')[0];
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if (y > 0) {
-          sessionStorage.setItem(`ntic_scroll_pos_${path}`, y.toString());
+          sessionStorage.setItem(`ntic_scroll_pos_${fullUrl}`, y.toString());
         }
       } catch (_) {}
     }, 80);

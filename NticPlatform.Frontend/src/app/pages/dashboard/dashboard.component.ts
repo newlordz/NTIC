@@ -607,11 +607,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
   adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | 'mentors' | 'treasury' | '' = '';
 
+  scrollToTop(): void {
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+    }
+  }
+
   goToTab(tab: string): void {
     this.adminTab = tab as any;
     this.adminSubTab = '';
     this.expandedSection = false;
     this.persistNavState();
+    this.scrollToTop();
   }
 
   goToSubTab(sub: string): void {
@@ -630,6 +642,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadApprovalsFromBackend();
     }
     this.persistNavState();
+    this.scrollToTop();
     this.cdr.markForCheck();
   }
 
@@ -3854,9 +3867,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       let hasExplicitTab = false;
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins', 'lms', 'database'].includes(params['tab'])) {
         hasExplicitTab = true;
+        const prevTab = this.adminTab;
+        const prevSub = this.adminSubTab;
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
           this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors','treasury'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+        }
+        if (this.adminTab !== prevTab || this.adminSubTab !== prevSub) {
+          this.scrollToTop();
         }
         if (params['subtab'] === 'personnel') {
           this.loadPersonnel();

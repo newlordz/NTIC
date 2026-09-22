@@ -60,15 +60,15 @@
 
   <!-- View switch -->
   <div class="jw-tabs" *ngIf="!loadError">
-    <button class="jw-tab" [class.active]="view === 'competitions'" (click)="view = 'competitions'">
+    <button class="jw-tab" [class.active]="view === 'competitions'" (click)="setView('competitions')">
       <span class="material-symbols-outlined">travel_explore</span>Competitions &amp; Impact
       <span class="jw-tab-badge" *ngIf="competitions.length > 0">{{ competitions.length }}</span>
     </button>
-    <button class="jw-tab" [class.active]="view === 'queue'" (click)="view = 'queue'">
+    <button class="jw-tab" [class.active]="view === 'queue'" (click)="setView('queue')">
       <span class="material-symbols-outlined">inbox</span>Evaluation Queue
       <span class="jw-tab-badge" *ngIf="queue && queue.pending_total > 0">{{ queue.pending_total }}</span>
     </button>
-    <button class="jw-tab" [class.active]="view === 'history'" (click)="view = 'history'">
+    <button class="jw-tab" [class.active]="view === 'history'" (click)="setView('history')">
       <span class="material-symbols-outlined">history</span>My Scores &amp; Revisions
       <span class="jw-tab-badge" *ngIf="history && history.graded_total > 0">{{ history.graded_total }}</span>
     </button>
@@ -173,7 +173,7 @@
           <button class="jw-btn jw-btn-ghost jw-btn-sm" (click)="inspectCompetition(comp)" title="Inspect tournament schedule, rules, and track rubric">
             <span class="material-symbols-outlined">info</span>Details
           </button>
-          <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="startEvaluatingTrack(comp.track)" title="Open evaluation queue and load first pending submission">
+          <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="startEvaluatingTrack(comp.track, comp.id)" title="Open evaluation queue and load first pending submission">
             <span class="material-symbols-outlined">rate_review</span>Evaluate Track
           </button>
         </div>
@@ -713,7 +713,7 @@
         <button class="jw-btn jw-btn-ghost" (click)="openQueueForCycle(selectedCompetitionModal)">
           <span class="material-symbols-outlined">filter_alt</span>Evaluate This Cycle
         </button>
-        <button class="jw-btn jw-btn-primary" (click)="startEvaluatingTrack(selectedCompetitionModal.track); closeCompetitionModal()">
+        <button class="jw-btn jw-btn-primary" (click)="startEvaluatingTrack(selectedCompetitionModal.track, selectedCompetitionModal.id); closeCompetitionModal()">
           <span class="material-symbols-outlined">rate_review</span>Start Evaluating Track
         </button>
       </div>

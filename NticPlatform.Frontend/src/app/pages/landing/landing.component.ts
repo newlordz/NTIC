@@ -1800,19 +1800,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     const credential = this.email.trim().toLowerCase();
     const pass = this.password.trim();
 
-    // Ping health endpoint first to give friendlier "warming up" message
-    this.apiService.getPlatformStats().subscribe({
-      next: () => this.doLogin(credential, pass),
-      error: (err) => {
-        this.isLoggingIn = false;
-        if (typeof document !== 'undefined') document.body.style.overflow = '';
-        if (err.status === 503 || err.status === 0 || err.name === 'TimeoutError') {
-          this.loginError = 'Server is warming up. The database may still be starting -- please wait a moment and try again.';
-        } else {
-          this.doLogin(credential, pass);
-        }
-      }
-    });
+    this.doLogin(credential, pass);
   }
 
   private doLogin(credential: string, pass: string): void {

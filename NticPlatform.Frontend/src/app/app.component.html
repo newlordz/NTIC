@@ -31,15 +31,15 @@
 
     <div class="sidebar-section">
       <div class="sidebar-section-label" *ngIf="!isDesktopSidebarCollapsed">Main</div>
-      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" [class.active]="isNavActive('dashboard')" (click)="closeMobileSidebar()" title="Dashboard">
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" [class.active]="isNavActive('dashboard')" (click)="closeMobileSidebar(); scrollToTop()" title="Dashboard">
         <span class="material-symbols-outlined">dashboard</span>
         <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Dashboard</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('admin_control')" routerLink="/dashboard" [queryParams]="{ tab: 'control' }" routerLinkActive="active" (click)="closeMobileSidebar()" title="Admin Control">
+      <a class="nav-item" *ngIf="hasAccess('admin_control')" routerLink="/dashboard" [queryParams]="{ tab: 'control' }" routerLinkActive="active" (click)="closeMobileSidebar(); scrollToTop()" title="Admin Control">
         <span class="material-symbols-outlined">admin_panel_settings</span>
         <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Admin Control</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar()" title="My Teams &amp; Roster">
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar(); scrollToTop()" title="My Teams &amp; Roster">
         <span class="material-symbols-outlined">groups</span>
         <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">My Teams &amp; Roster</span>
       </a>

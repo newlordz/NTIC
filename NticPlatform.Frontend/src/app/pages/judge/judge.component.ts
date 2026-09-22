@@ -418,10 +418,25 @@ export class JudgeComponent implements OnInit {
 
   // ── Navigation & Evaluation Actions ──────────────────────────────────
 
+  private scrollToTop(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
+    }
+  }
+
+  setView(view: 'competitions' | 'queue' | 'history'): void {
+    this.view = view;
+    this.scrollToTop();
+  }
+
   openQueueForTrack(track: string): void {
-    this.trackFilter = track;
+    const normalized = (!track || track.toLowerCase().includes('all')) ? '' : track;
+    this.trackFilter = normalized;
     this.view = 'queue';
     this.active = null;
+    this.scrollToTop();
     this.refresh();
   }
 
@@ -438,6 +453,7 @@ export class JudgeComponent implements OnInit {
     this.view = 'queue';
     this.active = null;
     this.selectedCompetitionModal = null;
+    this.scrollToTop();
     this.refresh();
   }
 
@@ -454,18 +470,27 @@ export class JudgeComponent implements OnInit {
     return this.competitions.find(c => c.id === this.cycleFilter)?.title ?? 'Selected cycle';
   }
 
-  startEvaluatingTrack(track: string): void {
-    this.trackFilter = track;
+  startEvaluatingTrack(track: string, competitionId: string = ''): void {
+    const normalized = (!track || track.toLowerCase().includes('all')) ? '' : track;
+    this.trackFilter = normalized;
+    if (competitionId) {
+      this.cycleFilter = competitionId;
+    }
     this.view = 'queue';
     this.loading = true;
-    this.apiService.getJudgeQueue(track, this.cycleFilter).subscribe({
+    this.scrollToTop();
+
+    this.apiService.getJudgeQueue(normalized, this.cycleFilter).subscribe({
       next: q => {
         this.queue = q;
         this.loading = false;
         if (q.submissions && q.submissions.length > 0) {
           this.open(q.submissions[0]);
+          this.dialogService.toast(`Loaded ${q.submissions.length} submission(s) awaiting evaluation.`, 'success');
         } else {
           this.active = null;
+          const trackLabel = normalized ? normalized : 'all tracks';
+          this.dialogService.toast(`Evaluation queue opened. No pending submissions in ${trackLabel}.`, 'info');
         }
         this.cdr.detectChanges();
       },

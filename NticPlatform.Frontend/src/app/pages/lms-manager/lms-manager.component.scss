@@ -6,6 +6,12 @@
   color: var(--on-surface, #1e293b);
   box-sizing: border-box;
   overflow-x: hidden;
+
+  &.studio-view-active {
+    padding: 0;
+    max-width: 100%;
+    margin: 0;
+  }
 }
 
 // ── Header ──────────────────────────────────────────
