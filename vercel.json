@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "installCommand": "npm install --prefix NticPlatform.Frontend",
-  "buildCommand": "npm install --prefix NticPlatform.Frontend && npm run build --prefix NticPlatform.Frontend",
+  "framework": null,
+  "installCommand": "pip install -r requirements.txt -t _vendor && npm install --prefix NticPlatform.Frontend",
+  "buildCommand": "npm run build --prefix NticPlatform.Frontend",
   "outputDirectory": "NticPlatform.Frontend/dist/ntic-frontend/browser",
   "functions": {
     "api/index.py": {
-      "includeFiles": "NticPlatform.Backend/**",
+      "includeFiles": "{NticPlatform.Backend/**,_vendor/**}",
       "maxDuration": 30
     }
   },
