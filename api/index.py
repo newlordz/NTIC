@@ -7,11 +7,15 @@ from pathlib import Path
 _api_dir = Path(__file__).resolve().parent
 _root_dir = _api_dir.parent
 
-# Probe all plausible deployment locations for NticPlatform.Backend
+# Probe all plausible deployment locations for NticPlatform.Backend and dependencies
 _candidates = [
     _root_dir / "NticPlatform.Backend",
     Path.cwd() / "NticPlatform.Backend",
     Path("/var/task/NticPlatform.Backend"),
+    Path("/var/task/.venv/lib/python3.12/site-packages"),
+    Path("/var/task/.venv/lib/python3.11/site-packages"),
+    Path("/var/task/_vendor"),
+    Path.cwd() / ".venv" / "lib" / "python3.12" / "site-packages",
     _root_dir,
     Path.cwd(),
     Path("/var/task"),
