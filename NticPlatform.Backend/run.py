@@ -33,9 +33,9 @@ try:
     from app.config import settings
 except Exception:
     class _FallbackSettings:
-        PORT = int(os.getenv("PORT", "80"))
+        PORT = int(os.getenv("PORT") or "80")
         POSTGRES_HOST = os.getenv("DB_HOST", "127.0.0.1")
-        POSTGRES_PORT = int(os.getenv("DB_PORT", "5432"))
+        POSTGRES_PORT = int(os.getenv("DB_PORT") or "5432")
         POSTGRES_DB = os.getenv("DB_NAME", "postgres")
         POSTGRES_USER = os.getenv("DB_USERNAME", "postgres")
         POSTGRES_PASSWORD = os.getenv("DB_PASSWORD", "")

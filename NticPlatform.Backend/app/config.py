@@ -78,7 +78,7 @@ class Config:
         or os.path.exists("/opt/venv")
         or os.path.exists("/app")
     )
-    PORT: int = int(os.getenv("PORT", "80" if _is_cloud else "5000"))
+    PORT: int = int(_get_nonempty_env("PORT", "80" if _is_cloud else "5000"))
 
     _raw_origins = os.getenv(
         "ALLOWED_ORIGINS",
