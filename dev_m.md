@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD013 -->
 # Developer Memo & Sync Guide (dev_m)
 > **Version:** 1.0.0
 > **Last Updated:** 2026-08-31
