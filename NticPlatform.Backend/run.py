@@ -1498,9 +1498,8 @@ if __name__ == "__main__":
     is_cloud_env = (
         sys.platform != "win32"
         and (
-            bool(os.getenv("WASMER_APP_ID"))
-            or bool(os.getenv("WASMER_APP_URL"))
-            or (sys.platform in ("wasi", "wasix"))
+            bool(os.getenv("PORT"))
+            or bool(os.getenv("VERCEL"))
             or os.path.exists("/opt/venv")
             or os.path.exists("/app")
         )

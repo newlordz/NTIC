@@ -144,8 +144,7 @@ class WsManager:
         pool. Entirely optional: if it cannot start, broadcasts simply stay
         local, which is the previous behaviour.
         """
-        import sys
-        if bool(os.getenv("WASMER_APP_ID") or sys.platform in ("wasi", "wasix")) or os.getenv("NTIC_DISABLE_WS_FANOUT", "").strip().lower() in ("1", "true", "yes"):
+        if bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV")) or os.getenv("NTIC_DISABLE_WS_FANOUT", "").strip().lower() in ("1", "true", "yes"):
             logger.info("Cross-replica WebSocket fan-out disabled in this environment")
             return
         if self._listener and self._listener.is_alive():

@@ -27,21 +27,14 @@ def _redact_db_url(url: str) -> str:
         return "<unparseable url redacted>"
 
 
-def _is_wasm_env() -> bool:
-    import sys, os
-    return bool(os.getenv("WASMER_APP_ID") or sys.platform in ("wasi", "wasix"))
-
-
 def _get_connect_kwargs(timeout=10) -> dict:
-    kw = {"connect_timeout": timeout}
-    if not _is_wasm_env():
-        kw.update({
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5
-        })
-    return kw
+    return {
+        "connect_timeout": timeout,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
 
 
 def init_postgres_db():
@@ -58,8 +51,11 @@ def init_postgres_db():
     # ── Diagnose available connection vars ──────────────────────────
     # Never log raw values: DATABASE_URL contains the password in the
     # "postgresql://user:PASSWORD@host/db" userinfo section.
-    url_keys = {"DATABASE_PRIVATE_URL", "DATABASE_URL"}
-    db_keys = ["DATABASE_PRIVATE_URL", "DATABASE_URL", "PGHOST", "PGPORT", "PGUSER", "PGDATABASE", "POSTGRES_HOST", "POSTGRES_PORT"]
+    url_keys = {"DATABASE_PRIVATE_URL", "DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL"}
+    db_keys = [
+        "DATABASE_PRIVATE_URL", "DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL",
+        "PGHOST", "PGPORT", "PGUSER", "PGDATABASE", "POSTGRES_HOST", "POSTGRES_PORT"
+    ]
     for k in db_keys:
         v = os.environ.get(k, "")
         if not v:
@@ -82,9 +78,7 @@ def init_postgres_db():
             release_db_connection(conn)
             return False, str(schema_err)
 
-    if _is_wasm_env():
-        logger.warning("Database direct connection failed on Wasmer/WASM environment.")
-        return False, "Database unreachable"
+
 
     # ── local-dev fallback (will never work on Railway) ─────────────
     db_host = settings.POSTGRES_HOST
@@ -1163,8 +1157,8 @@ def init_connection_pool():
 
     conn_kwargs = _get_connect_kwargs(timeout=10)
 
-    # Try URL connections first (Railway environment standard)
-    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+    # Try URL connections first (Railway, Vercel Postgres, Neon, or Supabase standard)
+    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL"):
         db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
@@ -1244,7 +1238,7 @@ def get_db_connection():
 
     if psycopg2 is not None:
         conn_kwargs = _get_connect_kwargs(timeout=10)
-        for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+        for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL", "POSTGRES_URL", "POSTGRES_PRISMA_URL"):
             db_url = os.environ.get(url_key, "").strip()
             if db_url:
                 try:

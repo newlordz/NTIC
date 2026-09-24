@@ -2,7 +2,7 @@ import sys
 import os
 from pathlib import Path
 
-# Ensure virtual environment site-packages are first on sys.path in Wasmer / container environments
+# Ensure virtual environment site-packages are first on sys.path in container environments
 for _sp in [
     Path("/opt/venv/lib/python3.13/site-packages"),
     Path("/opt/venv/lib/python3.12/site-packages"),

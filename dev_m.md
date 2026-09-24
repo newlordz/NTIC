@@ -76,6 +76,13 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-09-24 - v1.0.8]**:
+  - **Vercel Platform Migration & Wasmer Decommissioning:**
+    - **Vercel Deployment Architecture (`vercel.json`):** Unified deployment configuring Angular static Edge CDN hosting (`dist/ntic-frontend/browser`), SPA fallback rewrites, and FastAPI Python serverless execution for `/api/*` via `api/index.py`.
+    - **Vercel Postgres & Neon URL Support:** Added `POSTGRES_URL` and `POSTGRES_PRISMA_URL` handling to `app/config.py` and `app/database.py` connection pooling.
+    - **Dynamic Preview Domain CORS:** Added `allow_origin_regex=r"^https://.*\.vercel\.app$"` for seamless Vercel PR preview environments.
+    - **Wasmer WASIX Cleanup:** Deleted `app.yaml`, simplified `sitecustomize.py`, and removed Wasmer-specific workarounds and monkeypatches from `database.py`, `ws_manager.py`, `run.py`, and root `main.py`.
+    - Verification: All 552 backend pytest unit tests and frontend Angular typechecks passing cleanly with 0 errors.
 - **[2026-09-02 - v1.0.7]**:
   - **The Native Feel UI/UX, Rich Block Studio & Media Upload Subsystem:**
     - **Dedicated Full-Page Workspaces:** Replaced cramped modals for course authoring and module creation with full-page dedicated consoles (`course_console`, `module_studio`, `course_wizard`).

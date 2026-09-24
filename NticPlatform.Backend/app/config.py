@@ -73,21 +73,22 @@ class Config:
 
     _is_cloud: bool = bool(
         os.getenv("PORT")
-        or os.getenv("WASMER_APP_ID")
-        or os.getenv("WASMER_APP_URL")
+        or os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
         or os.path.exists("/opt/venv")
         or os.path.exists("/app")
     )
     PORT: int = int(os.getenv("PORT", "80" if _is_cloud else "5000"))
 
-    ALLOWED_ORIGINS: list = [
-        origin.strip()
-        for origin in os.getenv(
-            "ALLOWED_ORIGINS",
-            "http://localhost:4200,http://127.0.0.1:4200,http://localhost:8080,http://127.0.0.1:8080,https://ntic.up.railway.app,https://ntic-87120.wasmer.app",
-        ).split(",")
-        if origin.strip()
-    ]
+    _raw_origins = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:4200,http://127.0.0.1:4200,http://localhost:8080,http://127.0.0.1:8080",
+    ).split(",")
+    ALLOWED_ORIGINS: list = [origin.strip() for origin in _raw_origins if origin.strip()]
+    if os.getenv("VERCEL_URL"):
+        v_url = f"https://{os.getenv('VERCEL_URL')}".rstrip("/")
+        if v_url not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(v_url)
 
     @classmethod
     def validate(cls) -> None:
