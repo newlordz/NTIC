@@ -7,7 +7,7 @@
     "postinstall": "npm install --prefix NticPlatform.Frontend",
     "start": "npm start --prefix NticPlatform.Frontend",
     "dev": "npm run dev --prefix NticPlatform.Frontend",
-    "build": "npm run build --prefix NticPlatform.Frontend",
+    "build": "npm install --prefix NticPlatform.Frontend && npm run build --prefix NticPlatform.Frontend",
     "test": "npm run test --prefix NticPlatform.Frontend",
     "lint:md": "npx markdownlint-cli \"**/*.md\" --ignore-path .markdownlintignore"
   }
