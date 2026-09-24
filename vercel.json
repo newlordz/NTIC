@@ -3,6 +3,12 @@
   "installCommand": "npm install --prefix NticPlatform.Frontend",
   "buildCommand": "npm install --prefix NticPlatform.Frontend && npm run build --prefix NticPlatform.Frontend",
   "outputDirectory": "NticPlatform.Frontend/dist/ntic-frontend/browser",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "NticPlatform.Backend/**",
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
