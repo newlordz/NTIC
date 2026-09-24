@@ -22,6 +22,7 @@
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const injectScript = path.join(__dirname, 'inject-env.js');
 let restored = false;
@@ -36,7 +37,12 @@ function run(args, label) {
 
 function runNg(args) {
   // Resolve the local Angular CLI rather than relying on PATH.
-  const ngBin = path.join(__dirname, 'node_modules', '@angular', 'cli', 'bin', 'ng.js');
+  let ngBin = path.join(__dirname, 'node_modules', '@angular', 'cli', 'bin', 'ng.js');
+  if (!fs.existsSync(ngBin)) {
+    try {
+      ngBin = require.resolve('@angular/cli/bin/ng.js', { paths: [__dirname, path.join(__dirname, '..')] });
+    } catch (_) {}
+  }
   const nodeOptions = process.env.NODE_OPTIONS || '--max-old-space-size=2048';
   const maxWorkers = process.env.NG_BUILD_MAX_WORKERS || '1';
   const env = { ...process.env, NODE_OPTIONS: nodeOptions, NG_BUILD_MAX_WORKERS: maxWorkers };

@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "installCommand": "npm install --prefix NticPlatform.Frontend",
   "buildCommand": "npm run build --prefix NticPlatform.Frontend",
   "outputDirectory": "NticPlatform.Frontend/dist/ntic-frontend/browser",
   "rewrites": [

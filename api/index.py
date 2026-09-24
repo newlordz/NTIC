@@ -16,4 +16,20 @@ if str(_root_dir) not in sys.path:
 os.environ.setdefault("VERCEL", "1")
 
 # Import the FastAPI ASGI app from NticPlatform.Backend
-from app.main import app
+from app.main import app as _base_app
+
+# Vercel ASGI wrapper: normalizes paths so /api routes match regardless of rewrite style
+async def app(scope, receive, send):
+    if scope.get("type") in ("http", "websocket"):
+        path = scope.get("path", "")
+        # If Vercel rewrote path directly to function filename, recover original path from headers
+        if path.endswith(".py") or path == "/api/index":
+            headers = dict(scope.get("headers", []))
+            orig = headers.get(b"x-matched-path", headers.get(b"x-forwarded-uri", b"")).decode("utf-8", "ignore")
+            if orig and not orig.endswith(".py"):
+                path = orig.split("?")[0]
+        # Ensure path starts with /api to match FastAPI route declarations
+        if not path.startswith("/api"):
+            path = "/api" + (path if path.startswith("/") else f"/{path}")
+        scope["path"] = path
+    await _base_app(scope, receive, send)

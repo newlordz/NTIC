@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
+    "postinstall": "npm install --prefix NticPlatform.Frontend",
     "start": "npm start --prefix NticPlatform.Frontend",
     "dev": "npm run dev --prefix NticPlatform.Frontend",
     "build": "npm run build --prefix NticPlatform.Frontend",
