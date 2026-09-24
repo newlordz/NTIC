@@ -544,6 +544,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/judge']);
         break;
       case 'instructor':
+      case 'mentor':
         this.router.navigate(['/mentor']);
         break;
       case 'school_admin':
@@ -628,7 +629,8 @@ export class AppComponent implements OnInit, OnDestroy {
     switch (role) {
       case 'school_admin': return 'Institution Hub';
       case 'student': return 'Student Hub';
-      case 'instructor': return 'Mentor Studio';
+      case 'instructor':
+      case 'mentor': return 'Mentor Studio';
       case 'judge': return 'Evaluation Panel';
       case 'sponsor': return 'Sponsor Portal';
       case 'super_admin':
@@ -853,7 +855,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'records':      return ['super_admin', 'admin', 'content_manager'].includes(role);
       case 'users':        return ['super_admin', 'admin'].includes(role);
       case 'lms_admin':    return ['super_admin', 'admin', 'content_manager', 'instructor'].includes(role);
-      case 'mentor':       return ['mentor', 'reviewer', ...adminRoles].includes(role);
+      case 'mentor':       return ['mentor', 'instructor'].includes(role);
       case 'support':      return ['super_admin', 'admin', 'support_admin'].includes(role);
       default:             return false;
     }

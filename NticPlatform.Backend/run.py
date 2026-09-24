@@ -1063,6 +1063,25 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/landing-copy':
+                conn = _safe_get_db()
+                results = {}
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT key, value FROM landing_copy")
+                        rows = cur.fetchall()
+                        results = {r[0]: r[1] for r in rows}
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/landing-copy GET error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
             elif path == '/api/lms/courses':
                 conn = _safe_get_db()
                 results = []
@@ -1404,6 +1423,66 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
+
+        def do_PUT(self):
+            path = self.path.split('?')[0]
+            content_length = int(self.headers.get('Content-Length', 0))
+            put_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(put_data.decode('utf-8'))
+            except Exception:
+                data = {}
+            if path == '/api/landing-copy':
+                conn = _safe_get_db()
+                if not conn:
+                    self.send_response(503)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Database unavailable"}).encode('utf-8'))
+                    return
+                try:
+                    cur = conn.cursor()
+                    for key, value in data.items():
+                        section = str(key).split('.')[0] if '.' in str(key) else 'General'
+                        cur.execute(
+                            "INSERT INTO landing_copy (key, value, section, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP) "
+                            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP",
+                            (str(key), str(value), section)
+                        )
+                    conn.commit()
+                    cur.close()
+                except Exception as put_err:
+                    print(f"[run.py] /api/landing-copy PUT error: {put_err}", flush=True)
+                    conn.rollback()
+                    conn.close()
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": str(put_err)}).encode('utf-8'))
+                    return
+                finally:
+                    conn.close()
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "updated", "count": len(data)}).encode('utf-8'))
+            else:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"detail": f"Endpoint not found: {path}"}).encode('utf-8'))
+
+        def do_DELETE(self):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self._send_cors()
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
 
     _safe_init_db()
     server = HTTPServer(('0.0.0.0', port), StandaloneHandler)
