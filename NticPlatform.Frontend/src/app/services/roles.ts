@@ -62,6 +62,9 @@ export const SUPPORT_ROLES = union(ADMIN_ROLES, [ROLE_SUPPORT_ADMIN]);
 /** security.py: LMS_ROLES -- may create and manage LMS courses and materials. */
 export const LMS_ROLES = union(ADMIN_ROLES, [ROLE_INSTRUCTOR, ROLE_CONTENT_MANAGER]);
 
+/** MENTOR_ROLES -- may operate in the Mentor Studio workspace. */
+export const MENTOR_ROLES = union(ADMIN_ROLES, [ROLE_MENTOR, ROLE_REVIEWER]);
+
 export { union as unionRoles };
 
 /** True when `role` may perform an action governed by `roleSet`. */

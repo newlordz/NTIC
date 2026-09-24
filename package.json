@@ -5,6 +5,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "start": "npm start --prefix NticPlatform.Frontend",
+    "dev": "npm run dev --prefix NticPlatform.Frontend",
     "build": "npm run build --prefix NticPlatform.Frontend",
     "test": "npm run test --prefix NticPlatform.Frontend",
     "lint:md": "npx markdownlint-cli \"**/*.md\" --ignore-path .markdownlintignore"

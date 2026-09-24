@@ -89,6 +89,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'registration': 'Registration',
     'lms':          'Learning Management',
     'lms-manager':  'LMS Manager',
+    'mentor':       'Mentor Studio',
     'competitions': 'Competitions',
     'admin':        'Competition Cycle Manager',
     'leaderboard':  'Leaderboard',
@@ -543,9 +544,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/judge']);
         break;
       case 'instructor':
-        // '/instructor' is only a redirect to the dashboard; the instructor's real
-        // workspace is the LMS manager.
-        this.router.navigate(['/lms-manager']);
+        this.router.navigate(['/mentor']);
         break;
       case 'school_admin':
         this.router.navigate(['/dashboard'], { queryParams: { tab: 'roster' } });
@@ -854,6 +853,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'records':      return ['super_admin', 'admin', 'content_manager'].includes(role);
       case 'users':        return ['super_admin', 'admin'].includes(role);
       case 'lms_admin':    return ['super_admin', 'admin', 'content_manager', 'instructor'].includes(role);
+      case 'mentor':       return ['mentor', 'reviewer', ...adminRoles].includes(role);
       case 'support':      return ['super_admin', 'admin', 'support_admin'].includes(role);
       default:             return false;
     }

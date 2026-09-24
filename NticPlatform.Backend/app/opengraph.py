@@ -84,12 +84,18 @@ def _render_og_html(
     return HTMLResponse(content=html_content, status_code=200)
 
 def _serve_spa_or_redirect(request: Request, canonical_url: str):
-    frontend_dist = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")
-    )
-    index_path = os.path.join(frontend_dist, "index.html")
-    if os.path.isfile(index_path):
-        return FileResponse(index_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    _candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser"),
+        os.path.join(os.path.dirname(__file__), "..", "..", "static"),
+        os.path.join(os.path.dirname(__file__), "..", "static"),
+        "/NticPlatform.Frontend/dist/ntic-frontend/browser",
+        "/app/static",
+    ]
+    frontend_dist = next((os.path.abspath(c) for c in _candidates if os.path.isdir(c) and os.path.isfile(os.path.join(c, "index.html"))), None)
+    if frontend_dist:
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return HTMLResponse(content=f'<script>window.location.replace("{canonical_url}");</script>')
 
 @router.get("/news/{item_id}", response_class=HTMLResponse)

@@ -1,0 +1,874 @@
+<div class="mentor-studio-container">
+  <!-- ══ HERO BANNER ══ -->
+  <header class="mentor-hero">
+    <div class="hero-content">
+      <div class="mentor-badge-row">
+        <span class="mentor-role-badge">
+          <span class="material-symbols-outlined icon">diversity_3</span>
+          NTIC Technical Mentorship Console
+        </span>
+        <span class="status-indicator">
+          <span class="dot"></span>
+          Mentorship Active (2026 Season)
+        </span>
+      </div>
+      <h1 class="hero-title">
+        Mentor Studio &amp; Advisory Desk
+      </h1>
+      <p class="hero-subtitle">
+        Guide, evaluate, and accelerate Ghana's next-generation tech champions across Coding, Robotics, AI, and Cybersecurity.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="btn-primary" (click)="openLogSessionModal()">
+        <span class="material-symbols-outlined">more_time</span>
+        Log Mentoring Hours
+      </button>
+      <button type="button" class="btn-outline" (click)="openOfficeHourModal()">
+        <span class="material-symbols-outlined">event_available</span>
+        Set Office Hours
+      </button>
+      <button type="button" class="btn-secondary" *ngIf="pendingRequests.length > 0" (click)="activeTab = 'requests'">
+        <span class="material-symbols-outlined">inbox</span>
+        Review Requests ({{ pendingRequests.length }})
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ STATS KPI ROW ══ -->
+  <section class="stats-grid">
+    <div class="stat-card" (click)="activeTab = 'squads'" role="button" tabindex="0">
+      <div class="stat-icon-wrap primary">
+        <span class="material-symbols-outlined">groups</span>
+      </div>
+      <div class="stat-details">
+        <div class="stat-value">{{ assignedTeams.length }}</div>
+        <div class="stat-label">Assigned Squads</div>
+      </div>
+      <div class="stat-trend positive">
+        <span class="material-symbols-outlined">trending_up</span>
+        Active Guidance
+      </div>
+    </div>
+
+    <div class="stat-card" (click)="activeTab = 'requests'" role="button" tabindex="0">
+      <div class="stat-icon-wrap amber">
+        <span class="material-symbols-outlined">person_add</span>
+      </div>
+      <div class="stat-details">
+        <div class="stat-value">{{ pendingRequests.length }}</div>
+        <div class="stat-label">Mentorship Requests</div>
+      </div>
+      <div class="stat-trend" [class.alert]="pendingRequests.length > 0">
+        <span class="material-symbols-outlined">{{ pendingRequests.length > 0 ? 'notification_important' : 'done_all' }}</span>
+        {{ pendingRequests.length > 0 ? 'Requires Action' : 'All Clear' }}
+      </div>
+    </div>
+
+    <div class="stat-card" (click)="activeTab = 'office_hours'" role="button" tabindex="0">
+      <div class="stat-icon-wrap emerald">
+        <span class="material-symbols-outlined">schedule</span>
+      </div>
+      <div class="stat-details">
+        <div class="stat-value">{{ totalMentoringHours }}h</div>
+        <div class="stat-label">Advisory Logged</div>
+      </div>
+      <div class="stat-trend positive">
+        <span class="material-symbols-outlined">verified</span>
+        CSR Verified
+      </div>
+    </div>
+
+    <div class="stat-card" (click)="activeTab = 'submissions'" role="button" tabindex="0">
+      <div class="stat-icon-wrap rose">
+        <span class="material-symbols-outlined">speed</span>
+      </div>
+      <div class="stat-details">
+        <div class="stat-value">{{ averageTrackMastery }}%</div>
+        <div class="stat-label">Avg. Track Mastery</div>
+      </div>
+      <div class="stat-trend positive">
+        <span class="material-symbols-outlined">military_tech</span>
+        High Readiness
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ NAVIGATION TABS ══ -->
+  <nav class="studio-nav-tabs">
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'squads'" (click)="activeTab = 'squads'">
+      <span class="material-symbols-outlined">groups</span>
+      Assigned Squads
+      <span class="count-pill">{{ assignedTeams.length }}</span>
+    </button>
+
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'requests'" (click)="activeTab = 'requests'">
+      <span class="material-symbols-outlined">inbox</span>
+      Requests Queue
+      <span class="count-pill alert" *ngIf="pendingRequests.length > 0">{{ pendingRequests.length }}</span>
+    </button>
+
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'submissions'" (click)="activeTab = 'submissions'">
+      <span class="material-symbols-outlined">assignment_turned_in</span>
+      Submissions &amp; Milestones
+      <span class="count-pill">{{ assignedSubmissions.length }}</span>
+    </button>
+
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'office_hours'" (click)="activeTab = 'office_hours'">
+      <span class="material-symbols-outlined">calendar_month</span>
+      Office Hours &amp; Sessions
+      <span class="count-pill">{{ officeHours.length }}</span>
+    </button>
+
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'resources'" (click)="activeTab = 'resources'">
+      <span class="material-symbols-outlined">auto_stories</span>
+      Curated LMS Tracks
+      <span class="count-pill">{{ curatedResources.length }}</span>
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: ASSIGNED SQUADS                                            -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="tab-pane" *ngIf="activeTab === 'squads'">
+    <!-- Filter Bar -->
+    <div class="squads-filter-bar">
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search squad name, school, team lead, or region..."
+          aria-label="Search assigned teams"
+        />
+        <button type="button" class="clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="filter-group">
+        <!-- Track Filter -->
+        <div class="filter-pill-select">
+          <span class="filter-label">Track:</span>
+          <select [(ngModel)]="selectedTrack" aria-label="Filter by track">
+            <option value="all">All Tracks</option>
+            <option value="coding">Coding &amp; Software</option>
+            <option value="robotics">Robotics &amp; IoT</option>
+            <option value="ai">AI &amp; Data Science</option>
+            <option value="cybersecurity">Cybersecurity</option>
+          </select>
+        </div>
+
+        <!-- Health Status Filter -->
+        <div class="filter-pill-select">
+          <span class="filter-label">Health:</span>
+          <select [(ngModel)]="selectedHealth" aria-label="Filter by milestone health">
+            <option value="all">All Statuses</option>
+            <option value="on_track">Optimal Pace</option>
+            <option value="needs_review">Guidance Active</option>
+            <option value="behind">Attention Needed</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Squads Grid -->
+    <div class="squads-grid" *ngIf="filteredAssignedTeams.length > 0; else noSquadsTemplate">
+      <article class="squad-card" *ngFor="let team of filteredAssignedTeams">
+        <header class="card-top">
+          <div class="track-badge" [ngStyle]="{ color: getTrackBadgeStyle(team.track).color, backgroundColor: getTrackBadgeStyle(team.track).bg }">
+            <span class="material-symbols-outlined icon">{{ getTrackBadgeStyle(team.track).icon }}</span>
+            <span>{{ team.track | uppercase }}</span>
+          </div>
+          <div class="health-badge" [ngStyle]="{ color: getTeamHealth(team).color, backgroundColor: getTeamHealth(team).bg }">
+            <span class="dot"></span>
+            {{ getTeamHealth(team).label }}
+          </div>
+        </header>
+
+        <div class="card-main">
+          <h3 class="team-title">{{ team.name }}</h3>
+          <div class="school-affiliation">
+            <span class="material-symbols-outlined icon">school</span>
+            <span>{{ team.schoolName || team.school_name || 'Accredited Institution' }}</span>
+          </div>
+
+          <div class="team-meta-row">
+            <div class="meta-item">
+              <span class="label">Lead</span>
+              <span class="val">{{ team.lead || 'Student Lead' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="label">Squad Size</span>
+              <span class="val">{{ team.members || 3 }} Engineers</span>
+            </div>
+            <div class="meta-item" *ngIf="team.region">
+              <span class="label">Region</span>
+              <span class="val">{{ team.region }}</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="milestone-progress">
+            <div class="progress-labels">
+              <span>Championship Readiness</span>
+              <span class="progress-pct">{{ calculateTeamProgress(team) }}%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" [style.width.%]="calculateTeamProgress(team)"></div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="card-actions">
+          <button type="button" class="btn-card-primary" (click)="openTeamDrawer(team)">
+            <span class="material-symbols-outlined">folder_open</span>
+            Workspace
+          </button>
+          <button type="button" class="btn-card-secondary" (click)="openLogSessionModal(team)" title="Log Advisory Session">
+            <span class="material-symbols-outlined">add_task</span>
+            Log Session
+          </button>
+          <a
+            class="btn-card-icon"
+            href="https://wa.me/233240000000?text=Hello%20Team%20{{ team.name }},%20this%20is%20your%20NTIC%20Mentor."
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Connect with Team Lead via WhatsApp"
+          >
+            <span class="material-symbols-outlined">chat</span>
+          </a>
+        </footer>
+      </article>
+    </div>
+
+    <ng-template #noSquadsTemplate>
+      <div class="empty-state-card">
+        <div class="empty-icon-wrap">
+          <span class="material-symbols-outlined">group_off</span>
+        </div>
+        <h3>No squads match the selected filters</h3>
+        <p>Try clearing your search query or adjusting your track and health filters.</p>
+        <button type="button" class="btn-outline" (click)="searchQuery = ''; selectedTrack = 'all'; selectedHealth = 'all'">
+          Reset All Filters
+        </button>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: MENTORSHIP REQUESTS QUEUE                                  -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="tab-pane" *ngIf="activeTab === 'requests'">
+    <div class="requests-header-banner">
+      <div class="banner-text">
+        <h2>Inbound Mentorship Requests</h2>
+        <p>Review student squads seeking technical mentorship or guidance for their championship project.</p>
+      </div>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="isAutoAssigning"
+        (click)="autoAssignAll()"
+      >
+        <span class="material-symbols-outlined">magic_button</span>
+        {{ isAutoAssigning ? 'Allocating...' : 'Batch Auto-Assign Unallocated' }}
+      </button>
+    </div>
+
+    <div class="requests-list" *ngIf="pendingRequests.length > 0; else noRequestsTemplate">
+      <div class="request-item-card" *ngFor="let req of pendingRequests">
+        <div class="request-info">
+          <div class="request-tags">
+            <span class="track-badge" [ngStyle]="{ color: getTrackBadgeStyle(req.track).color, backgroundColor: getTrackBadgeStyle(req.track).bg }">
+              <span class="material-symbols-outlined icon">{{ getTrackBadgeStyle(req.track).icon }}</span>
+              {{ req.track | uppercase }}
+            </span>
+            <span class="request-pill">Waiting for Mentor</span>
+          </div>
+          <h3 class="request-title">{{ req.name }}</h3>
+          <div class="request-school">
+            <span class="material-symbols-outlined icon">school</span>
+            {{ req.schoolName || req.school_name || 'Accredited Institution' }}
+          </div>
+          <div class="request-summary">
+            Team Lead: <strong>{{ req.lead || 'Student Lead' }}</strong> | Members: <strong>{{ req.members || 3 }}</strong>
+          </div>
+        </div>
+
+        <div class="request-actions">
+          <button type="button" class="btn-accept" [disabled]="isProcessingResponse" (click)="acceptRequest(req)">
+            <span class="material-symbols-outlined">check_circle</span>
+            Accept Mentorship
+          </button>
+          <button type="button" class="btn-decline" [disabled]="isProcessingResponse" (click)="openDeclineModal(req)">
+            <span class="material-symbols-outlined">cancel</span>
+            Decline
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noRequestsTemplate>
+      <div class="empty-state-card">
+        <div class="empty-icon-wrap emerald">
+          <span class="material-symbols-outlined">task_alt</span>
+        </div>
+        <h3>All requests have been addressed</h3>
+        <p>There are no pending mentorship requests awaiting mentor review at this time.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: SUBMISSIONS & MILESTONES REVIEW                            -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="tab-pane" *ngIf="activeTab === 'submissions'">
+    <div class="section-heading">
+      <div>
+        <h2>Project Milestones &amp; Submissions Desk</h2>
+        <p>Review draft architecture, repositories, and benchmark submissions from your assigned squads.</p>
+      </div>
+    </div>
+
+    <div class="submissions-table-wrap" *ngIf="assignedSubmissions.length > 0; else noSubmissionsTemplate">
+      <table class="submissions-table">
+        <thead>
+          <tr>
+            <th>Student / Squad</th>
+            <th>Assignment / Milestone</th>
+            <th>Track</th>
+            <th>Date Submitted</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sub of assignedSubmissions">
+            <td>
+              <div class="student-cell">
+                <div class="avatar">{{ (sub.student || 'ST').slice(0, 2).toUpperCase() }}</div>
+                <div class="info">
+                  <span class="name">{{ sub.student }}</span>
+                  <span class="school">{{ sub.school }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="assignment-cell">
+                <span class="assignment-title">{{ sub.assignment }}</span>
+                <span class="file-name" *ngIf="sub.file">{{ sub.file }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="track-badge small" [ngStyle]="{ color: getTrackBadgeStyle(sub.track).color, backgroundColor: getTrackBadgeStyle(sub.track).bg }">
+                {{ sub.track | uppercase }}
+              </span>
+            </td>
+            <td>{{ sub.time }}</td>
+            <td>
+              <span class="score-badge" *ngIf="sub.score !== null">{{ sub.score }}/100</span>
+              <span class="score-badge unrated" *ngIf="sub.score === null">Ungraded</span>
+            </td>
+            <td>
+              <span class="status-pill" [class.approved]="sub.status === 'approved'" [class.resubmit]="sub.status === 'resubmission'">
+                {{ sub.status === 'approved' ? 'Approved' : sub.status === 'resubmission' ? 'Revision Needed' : 'Pending' }}
+              </span>
+            </td>
+            <td>
+              <button type="button" class="btn-review" (click)="openFeedbackModal(sub)">
+                <span class="material-symbols-outlined">rate_review</span>
+                Evaluate
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #noSubmissionsTemplate>
+      <div class="empty-state-card">
+        <div class="empty-icon-wrap">
+          <span class="material-symbols-outlined">assignment</span>
+        </div>
+        <h3>No submissions queued for review</h3>
+        <p>Assigned teams have not submitted new project checkpoints yet.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 4: OFFICE HOURS & SESSION SCHEDULER                           -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="tab-pane" *ngIf="activeTab === 'office_hours'">
+    <div class="office-hours-header">
+      <div>
+        <h2>Weekly Advisory Office Hours</h2>
+        <p>Define weekly recurring time windows where your assigned teams can book 1-on-1 architecture consultations.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="openOfficeHourModal()">
+        <span class="material-symbols-outlined">add</span>
+        Add Availability Slot
+      </button>
+    </div>
+
+    <!-- Office Hours Slots -->
+    <div class="slots-grid">
+      <div class="slot-card" *ngFor="let slot of officeHours">
+        <div class="slot-top">
+          <div class="day-badge">{{ slot.day }}</div>
+          <button type="button" class="delete-slot-btn" (click)="removeOfficeHourSlot(slot.id)" title="Remove slot">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+        <div class="slot-time">
+          <span class="material-symbols-outlined">schedule</span>
+          <strong>{{ slot.timeWindow }}</strong>
+        </div>
+        <div class="slot-details">
+          <div class="detail-row">
+            <span class="label">Format:</span>
+            <span class="val">{{ slot.format }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Location:</span>
+            <span class="val text-truncate" [title]="slot.locationUrl">{{ slot.locationUrl }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Capacity:</span>
+            <span class="val">{{ slot.bookedCount }} / {{ slot.capacity }} Squads Booked</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completed Sessions Audit Log -->
+    <div class="sessions-audit-section">
+      <div class="section-subheading">
+        <h3>Verified Mentorship Logs (CSR Audit Trail)</h3>
+        <button type="button" class="btn-outline small" (click)="openLogSessionModal()">
+          <span class="material-symbols-outlined">add</span>
+          Record Session
+        </button>
+      </div>
+
+      <div class="sessions-table-wrap" *ngIf="sessionsLog.length > 0; else noSessionsTemplate">
+        <table class="sessions-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Squad</th>
+              <th>Duration</th>
+              <th>Advisory Objective</th>
+              <th>Notes &amp; Action Items</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let session of sessionsLog">
+              <td class="date-cell">{{ session.date }}</td>
+              <td><strong>{{ session.teamName }}</strong></td>
+              <td><span class="duration-badge">{{ session.durationMinutes }} mins</span></td>
+              <td>{{ session.topic }}</td>
+              <td>
+                <p class="notes-text">{{ session.notes }}</p>
+                <small class="action-items" *ngIf="session.actionItems">
+                  <strong>Action:</strong> {{ session.actionItems }}
+                </small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noSessionsTemplate>
+        <div class="empty-state-card small">
+          <p>No verified sessions logged yet. Record your first consultation to track hours!</p>
+        </div>
+      </ng-template>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 5: CURATED LMS LEARNING RESOURCES                             -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="tab-pane" *ngIf="activeTab === 'resources'">
+    <div class="section-heading">
+      <div>
+        <h2>Recommended Learning Modules</h2>
+        <p>Pin official NTIC curriculum guides, robotics code challenges, and cybersecurity labs to your assigned teams.</p>
+      </div>
+      <a routerLink="/lms" class="btn-outline">
+        <span class="material-symbols-outlined">launch</span>
+        Open Full LMS Catalog
+      </a>
+    </div>
+
+    <div class="resources-grid">
+      <article class="resource-card" *ngFor="let res of curatedResources">
+        <div class="res-top">
+          <span class="track-badge" [ngStyle]="{ color: getTrackBadgeStyle(res.track).color, backgroundColor: getTrackBadgeStyle(res.track).bg }">
+            {{ res.track | uppercase }}
+          </span>
+          <span class="level-badge">{{ res.level }}</span>
+        </div>
+        <h3 class="res-title">{{ res.title }}</h3>
+        <p class="res-desc">{{ res.description }}</p>
+        <div class="res-duration">
+          <span class="material-symbols-outlined icon">timer</span>
+          <span>Estimated: {{ res.duration }}</span>
+        </div>
+
+        <div class="res-pinned-banner" *ngIf="res.pinnedToTeams && res.pinnedToTeams.length > 0">
+          <span class="material-symbols-outlined">push_pin</span>
+          Pinned to {{ res.pinnedToTeams.length }} assigned squads
+        </div>
+
+        <div class="res-actions">
+          <button type="button" class="btn-pin" (click)="pinResourceToTeams(res)">
+            <span class="material-symbols-outlined">push_pin</span>
+            Pin to My Squads
+          </button>
+          <a [routerLink]="res.url" class="btn-open-lms">
+            <span class="material-symbols-outlined">open_in_new</span>
+            Preview Module
+          </a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- TEAM WORKSPACE DETAIL DRAWER                                      -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="drawer-overlay" *ngIf="isTeamDrawerOpen" (click)="closeTeamDrawer()"></div>
+  <aside class="team-workspace-drawer" *ngIf="isTeamDrawerOpen && selectedTeam">
+    <header class="drawer-header">
+      <div>
+        <div class="track-badge" [ngStyle]="{ color: getTrackBadgeStyle(selectedTeam.track).color, backgroundColor: getTrackBadgeStyle(selectedTeam.track).bg }">
+          {{ selectedTeam.track | uppercase }}
+        </div>
+        <h2 class="drawer-title">{{ selectedTeam.name }}</h2>
+        <div class="drawer-school">
+          <span class="material-symbols-outlined icon">school</span>
+          {{ selectedTeam.schoolName || selectedTeam.school_name }}
+        </div>
+      </div>
+      <button type="button" class="close-drawer-btn" (click)="closeTeamDrawer()" aria-label="Close workspace drawer">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="drawer-body">
+      <!-- Readiness Gauge -->
+      <div class="drawer-section">
+        <h4 class="section-title">Championship Milestone Readiness</h4>
+        <div class="milestone-progress">
+          <div class="progress-labels">
+            <span>Overall Readiness Score</span>
+            <span class="progress-pct">{{ calculateTeamProgress(selectedTeam) }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" [style.width.%]="calculateTeamProgress(selectedTeam)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Members Roster -->
+      <div class="drawer-section">
+        <h4 class="section-title">Engineers &amp; Squad Members</h4>
+        <div class="roster-list">
+          <div class="roster-item">
+            <div class="roster-avatar">LEAD</div>
+            <div class="roster-info">
+              <span class="name">{{ selectedTeam.lead || 'Student Lead' }}</span>
+              <span class="role">Team Lead &amp; Project Manager</span>
+            </div>
+            <span class="captain-badge">Lead</span>
+          </div>
+          <div class="roster-item" *ngFor="let member of (selectedTeam.memberNames || ['Lead Systems Engineer', 'Hardware & Embedded Specialist'])">
+            <div class="roster-avatar">{{ member.slice(0, 2).toUpperCase() }}</div>
+            <div class="roster-info">
+              <span class="name">{{ member }}</span>
+              <span class="role">Core Technical Contributor</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="drawer-section">
+        <h4 class="section-title">Direct Mentorship Actions</h4>
+        <div class="drawer-actions-grid">
+          <button type="button" class="btn-primary" (click)="openLogSessionModal(selectedTeam)">
+            <span class="material-symbols-outlined">history_edu</span>
+            Log Advisory Session
+          </button>
+          <a
+            class="btn-outline"
+            href="https://wa.me/233240000000?text=Hello%20Team%20{{ selectedTeam.name }},%20this%20is%20your%20mentor."
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="material-symbols-outlined">chat</span>
+            WhatsApp Contact
+          </a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: EVALUATE / FEEDBACK SUBMISSION                             -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="isFeedbackModalOpen" (click)="closeFeedbackModal()"></div>
+  <div class="modal-dialog" *ngIf="isFeedbackModalOpen && activeSubmission">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-symbols-outlined icon">rate_review</span>
+        <h3>Technical Feedback &amp; Evaluation</h3>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeFeedbackModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="sub-target-info">
+        <div><strong>Student / Team:</strong> {{ activeSubmission.student }}</div>
+        <div><strong>Milestone:</strong> {{ activeSubmission.assignment }}</div>
+      </div>
+
+      <div class="form-group">
+        <label for="evalScore">Checkpoint Score (0 - 100):</label>
+        <input
+          id="evalScore"
+          type="number"
+          min="0"
+          max="100"
+          [(ngModel)]="feedbackForm.score"
+          class="form-control"
+          placeholder="e.g. 88"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="evalStatus">Milestone Decision:</label>
+        <select id="evalStatus" [(ngModel)]="feedbackForm.status" class="form-control">
+          <option value="approved">Approve Milestone (Satisfactory)</option>
+          <option value="resubmission">Request Technical Revision</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="evalNotes">Guidance &amp; Technical Notes:</label>
+        <textarea
+          id="evalNotes"
+          rows="4"
+          [(ngModel)]="feedbackForm.notes"
+          class="form-control"
+          placeholder="Highlight strengths, architecture advice, or debugging action points..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline" (click)="closeFeedbackModal()">Cancel</button>
+      <button type="button" class="btn-primary" [disabled]="isSubmittingFeedback" (click)="saveFeedback()">
+        {{ isSubmittingFeedback ? 'Submitting...' : 'Save Evaluation' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: DECLINE REQUEST                                            -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="isDeclineModalOpen" (click)="closeDeclineModal()"></div>
+  <div class="modal-dialog" *ngIf="isDeclineModalOpen && decliningTeam">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-symbols-outlined icon text-error">cancel</span>
+        <h3>Decline Mentorship Request</h3>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeDeclineModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p>Are you sure you want to decline mentorship for <strong>{{ decliningTeam.name }}</strong>?</p>
+      <div class="form-group">
+        <label for="declineReasonInput">Reason (Shared with team lead):</label>
+        <textarea
+          id="declineReasonInput"
+          rows="3"
+          [(ngModel)]="declineReason"
+          class="form-control"
+          placeholder="e.g. Schedule capacity reached for this championship cycle..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline" (click)="closeDeclineModal()">Keep Request</button>
+      <button type="button" class="btn-error" [disabled]="isProcessingResponse" (click)="confirmDecline()">
+        {{ isProcessingResponse ? 'Processing...' : 'Confirm Decline' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: ADD OFFICE HOUR SLOT                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="isOfficeHourModalOpen" (click)="closeOfficeHourModal()"></div>
+  <div class="modal-dialog" *ngIf="isOfficeHourModalOpen">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-symbols-outlined icon">event_available</span>
+        <h3>New Office Hours Availability</h3>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeOfficeHourModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="slotDay">Day of Week:</label>
+        <select id="slotDay" [(ngModel)]="slotForm.day" class="form-control">
+          <option value="Mondays">Mondays</option>
+          <option value="Tuesdays">Tuesdays</option>
+          <option value="Wednesdays">Wednesdays</option>
+          <option value="Thursdays">Thursdays</option>
+          <option value="Fridays">Fridays</option>
+          <option value="Saturdays">Saturdays</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="slotTime">Time Window (GMT):</label>
+        <input
+          id="slotTime"
+          type="text"
+          [(ngModel)]="slotForm.timeWindow"
+          class="form-control"
+          placeholder="e.g. 15:00 - 17:00 GMT"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="slotFormat">Meeting Format:</label>
+        <select id="slotFormat" [(ngModel)]="slotForm.format" class="form-control">
+          <option value="Virtual (Google Meet)">Virtual (Google Meet)</option>
+          <option value="In-Person Lab">In-Person Lab</option>
+          <option value="Hybrid">Hybrid</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="slotLocation">Meeting Link / Lab Location:</label>
+        <input
+          id="slotLocation"
+          type="text"
+          [(ngModel)]="slotForm.locationUrl"
+          class="form-control"
+          placeholder="https://meet.google.com/... or Innovation Lab Room 4"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="slotCap">Max Squads per Window:</label>
+        <input
+          id="slotCap"
+          type="number"
+          min="1"
+          max="10"
+          [(ngModel)]="slotForm.capacity"
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline" (click)="closeOfficeHourModal()">Cancel</button>
+      <button type="button" class="btn-primary" (click)="addOfficeHourSlot()">Add Slot</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- MODAL: LOG MENTORSHIP SESSION                                     -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="isLogSessionModalOpen" (click)="closeLogSessionModal()"></div>
+  <div class="modal-dialog" *ngIf="isLogSessionModalOpen">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-symbols-outlined icon">more_time</span>
+        <h3>Record Mentorship Hours</h3>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeLogSessionModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="sessionTeamSelect">Squad / Team:</label>
+        <select id="sessionTeamSelect" [(ngModel)]="sessionForm.teamId" class="form-control">
+          <option *ngFor="let t of assignedTeams" [value]="t.id">{{ t.name }} ({{ t.track | uppercase }})</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sessionDuration">Duration (Minutes):</label>
+        <input
+          id="sessionDuration"
+          type="number"
+          min="15"
+          step="15"
+          [(ngModel)]="sessionForm.durationMinutes"
+          class="form-control"
+          placeholder="60"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="sessionTopic">Session Objective / Topic:</label>
+        <input
+          id="sessionTopic"
+          type="text"
+          [(ngModel)]="sessionForm.topic"
+          class="form-control"
+          placeholder="e.g. ROS 2 Node Architecture &amp; Nav2 Tuning"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="sessionNotesInput">Consultation Notes:</label>
+        <textarea
+          id="sessionNotesInput"
+          rows="3"
+          [(ngModel)]="sessionForm.notes"
+          class="form-control"
+          placeholder="Key technical roadblocks discussed and solutions proposed..."
+        ></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="sessionActionInput">Action Items for Squad:</label>
+        <input
+          id="sessionActionInput"
+          type="text"
+          [(ngModel)]="sessionForm.actionItems"
+          class="form-control"
+          placeholder="e.g. Implement collision detection timeout by next Tuesday"
+        />
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-outline" (click)="closeLogSessionModal()">Cancel</button>
+      <button type="button" class="btn-primary" (click)="saveSessionLog()">Save to Audit Log</button>
+    </div>
+  </div>
+</div>

@@ -7,7 +7,7 @@ import { environment } from '../../environments/environment';
 import { SessionSyncService } from '../services/session-sync.service';
 import {
   ALL_ROLES, ADMIN_ROLES, COMPETITION_ROLES, GRADING_ROLES, LMS_ROLES,
-  STUDENT_ADMIN_ROLES, CONTENT_ROLES, unionRoles,
+  STUDENT_ADMIN_ROLES, CONTENT_ROLES, MENTOR_ROLES, unionRoles,
   ROLE_SPONSOR, ROLE_STUDENT, ROLE_REVIEWER, ROLE_INSTRUCTOR, ROLE_SCHOOL_ADMIN
 } from '../services/roles';
 
@@ -36,6 +36,7 @@ const ROLE_ACCESS: Record<string, readonly string[]> = {
   // Students consume the LMS; LMS_ROLES author it.
   'lms':                unionRoles(LMS_ROLES, [ROLE_STUDENT]),
   'lms-manager':        LMS_ROLES,
+  'mentor':             MENTOR_ROLES,
 
   'sponsors':           unionRoles(ADMIN_ROLES, [ROLE_SPONSOR]),
 

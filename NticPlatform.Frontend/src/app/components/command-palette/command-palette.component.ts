@@ -111,6 +111,15 @@ export class CommandPaletteComponent implements OnInit {
         keywords: ['create course', 'manage lessons', 'curriculum admin']
       },
       {
+        id: 'nav-mentor',
+        title: 'Mentor Studio & Squad Advisory Desk',
+        category: 'Navigation',
+        icon: 'diversity_3',
+        route: '/mentor',
+        roleRequired: ['instructor', 'school_admin', 'reviewer', ...adminRoles],
+        keywords: ['mentor', 'advisory', 'office hours', 'squad guidance', 'assigned teams']
+      },
+      {
         id: 'nav-leaderboard',
         title: 'National Championship Leaderboard',
         category: 'Navigation',

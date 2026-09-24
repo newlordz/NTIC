@@ -11570,8 +11570,18 @@ try:
     app.include_router(opengraph_router)
 
     # Mount static files
-    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")
-    frontend_dist = os.path.abspath(frontend_dist)
+    _frontend_candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "static"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "static"),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "browser"),
+        "/NticPlatform.Frontend/dist/ntic-frontend/browser",
+        "/app/static",
+    ]
+    frontend_dist = next(
+        (os.path.abspath(c) for c in _frontend_candidates if os.path.isdir(c) and os.path.isfile(os.path.join(c, "index.html"))),
+        None
+    )
 
     # Files the browser must always revalidate. Angular emits these WITHOUT a
     # content hash, so caching them long-term leaves returning visitors pinned to
@@ -11597,7 +11607,7 @@ try:
                 response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             return response
 
-    if os.path.isdir(frontend_dist):
+    if frontend_dist and os.path.isdir(frontend_dist):
         app.mount("/", SpaStaticFiles(directory=frontend_dist, html=True), name="static")
 
         @app.exception_handler(404)
@@ -11622,7 +11632,7 @@ try:
                 )
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
     else:
-        print(f"[Warning] Frontend dist directory not found at: {frontend_dist}")
+        print("[Warning] No frontend static build with index.html found in candidate directories.")
 
 except ImportError as err:
     import traceback

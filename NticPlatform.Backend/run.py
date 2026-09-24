@@ -55,7 +55,7 @@ def _safe_get_db():
 
     # Try pg8000 (pure-Python, works seamlessly in Wasmer / WASIX sandbox)
     try:
-        import pg8000.dbapi
+        import pg8000.dbapi  # pyright: ignore[reportMissingImports]  # type: ignore
         for use_ssl in [True, False]:
             try:
                 conn = pg8000.dbapi.connect(
@@ -1415,28 +1415,64 @@ def run_standalone_server(port):
     server.serve_forever()
 
 if __name__ == "__main__":
-    _safe_init_db()
     port = settings.PORT
     is_cloud_env = (
-        bool(os.getenv("PORT"))
-        or bool(os.getenv("WASMER_APP_ID"))
-        or bool(os.getenv("WASMER_APP_URL"))
-        or (sys.platform in ("wasi", "wasix"))
-        or os.path.exists("/opt/venv")
-        or os.path.exists("/app")
+        sys.platform != "win32"
+        and (
+            bool(os.getenv("WASMER_APP_ID"))
+            or bool(os.getenv("WASMER_APP_URL"))
+            or (sys.platform in ("wasi", "wasix"))
+            or os.path.exists("/opt/venv")
+            or os.path.exists("/app")
+        )
     )
     if not is_cloud_env:
         try:
             import socket
+            # 1. Probe if a server is already actively responding on localhost
             _probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            _probe.settimeout(1)
-            if _probe.connect_ex(("127.0.0.1", port)) == 0:
-                print(f"[Notice] A backend is already running on port {port}. Not starting a duplicate instance.")
-                _probe.close()
-                sys.exit(0)
+            _probe.settimeout(0.5)
+            _is_listening = (_probe.connect_ex(("127.0.0.1", port)) == 0)
             _probe.close()
+
+            # 2. Probe if the port can actually be bound on 0.0.0.0
+            _can_bind = True
+            try:
+                _test_bind = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                _test_bind.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                _test_bind.bind(("0.0.0.0", port))
+                _test_bind.close()
+            except OSError:
+                _can_bind = False
+
+            if _is_listening or not _can_bind:
+                import subprocess
+                _pid = None
+                try:
+                    _out = subprocess.check_output(f"netstat -ano | findstr :{port}", shell=True, text=True)
+                    for _line in _out.strip().splitlines():
+                        _parts = _line.split()
+                        if len(_parts) >= 5 and _parts[1].endswith(f":{port}") and _parts[3] == "LISTENING":
+                            _pid = _parts[4]
+                            break
+                except Exception:
+                    pass
+
+                print(f"\n============================================================")
+                print(f" [Notice] Port {port} is already in use by another process.")
+                if _pid:
+                    print(f"          Process ID (PID): {_pid}")
+                    print(f"          To terminate it in PowerShell: Stop-Process -Id {_pid} -Force")
+                    print(f"          Or in Command Prompt:          taskkill /PID {_pid} /F")
+                else:
+                    print(f"          To free port {port} in PowerShell:")
+                    print(f"          Get-NetTCPConnection -LocalPort {port} | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}")
+                print(f"============================================================\n")
+                sys.exit(0)
         except Exception:
             pass
+
+    _safe_init_db()
     try:
         import uvicorn
         import fastapi

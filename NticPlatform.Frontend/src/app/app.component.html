@@ -54,6 +54,10 @@
         <span class="material-symbols-outlined">school</span>
         <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">LMS</span>
       </a>
+      <a class="nav-item" *ngIf="hasAccess('mentor')" routerLink="/mentor" routerLinkActive="active" (click)="closeMobileSidebar()" title="Mentor Studio">
+        <span class="material-symbols-outlined">diversity_3</span>
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Mentor Studio</span>
+      </a>
       <a class="nav-item" *ngIf="hasAccess('judging')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()" title="Observatory">
         <span class="material-symbols-outlined">visibility</span>
         <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Observatory</span>
@@ -207,6 +211,10 @@
               <a *ngIf="hasAccess('lms')" routerLink="/lms" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon tertiary"><span class="material-symbols-outlined">school</span></div>
                 <span>LMS</span>
+              </a>
+              <a *ngIf="hasAccess('mentor')" routerLink="/mentor" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon secondary"><span class="material-symbols-outlined">diversity_3</span></div>
+                <span>Mentor Studio</span>
               </a>
               <a *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
