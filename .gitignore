@@ -60,3 +60,5 @@ whatsapp_session/
 
 # Personal
 .minevibes
+.vercel
+.env*
