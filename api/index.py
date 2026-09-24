@@ -49,7 +49,16 @@ async def app(scope, receive, send):
     # If the app failed to load at boot, return diagnostic response instead of FUNCTION_INVOCATION_FAILED
     if _base_app is None:
         if scope_type == "http":
-            import json
+            _found_fastapi = []
+            try:
+                for r, d, f in os.walk("/var/task"):
+                    if "fastapi" in d:
+                        _found_fastapi.append(os.path.join(r, "fastapi"))
+                    if len(_found_fastapi) > 5:
+                        break
+            except Exception as ex:
+                _found_fastapi = [str(ex)]
+
             payload = json.dumps({
                 "status": "error",
                 "code": "BACKEND_INIT_FAILED",
@@ -58,9 +67,10 @@ async def app(scope, receive, send):
                 "diagnostics": {
                     "cwd": str(Path.cwd()),
                     "file": str(__file__),
-                    "sys_path": sys.path[:8],
-                    "root_contents": [p.name for p in _root_dir.iterdir()] if _root_dir.exists() else [],
-                    "cwd_contents": [p.name for p in Path.cwd().iterdir()] if Path.cwd().exists() else [],
+                    "sys_path": sys.path,
+                    "vendor_contents": [p.name for p in Path("/var/task/_vendor").iterdir()][:15] if Path("/var/task/_vendor").exists() else "missing",
+                    "lang_site_packages": [p.name for p in Path("/var/lang/lib/python3.12/site-packages").iterdir()][:15] if Path("/var/lang/lib/python3.12/site-packages").exists() else "missing",
+                    "found_fastapi": _found_fastapi,
                 }
             }, indent=2).encode("utf-8")
             await send({
