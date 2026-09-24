@@ -163,8 +163,7 @@ def _check_rate_limit_shared(key: str, max_attempts: int, window_seconds: int) -
             "WHERE bucket = %s AND hit_at > CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')",
             (key, window_seconds),
         )
-        row = cur.fetchone()
-        used, oldest = (row[0], row[1]) if row else (0, None)
+        used, oldest = cur.fetchone()
         if used is not None and used >= max_attempts:
             retry_after = window_seconds
             if oldest is not None:
@@ -172,8 +171,7 @@ def _check_rate_limit_shared(key: str, max_attempts: int, window_seconds: int) -
                     "SELECT GREATEST(1, CEIL(%s - EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - %s))))",
                     (window_seconds, oldest),
                 )
-                res = cur.fetchone()
-                retry_after = int((res[0] if res else None) or window_seconds)
+                retry_after = int(cur.fetchone()[0] or window_seconds)
             conn.commit()
             cur.close()
             release_db_connection(conn)
