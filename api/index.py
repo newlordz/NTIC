@@ -80,7 +80,7 @@ async def app(scope, receive, send):
                 "detail": _import_error,
                 "diagnostics": {
                     "cwd": str(Path.cwd()),
-                    "file": str(__file__),
+                    "file": __file__,
                     "sys_path": sys.path,
                     "vendor_contents": [p.name for p in Path("/var/task/_vendor").iterdir()][:15] if Path("/var/task/_vendor").exists() else "missing",
                     "lang_site_packages": [p.name for p in Path("/var/lang/lib/python3.12/site-packages").iterdir()][:15] if Path("/var/lang/lib/python3.12/site-packages").exists() else "missing",
@@ -116,7 +116,6 @@ async def app(scope, receive, send):
         await _base_app(scope, receive, send)
     except Exception as runtime_err:
         if scope_type == "http":
-            import json
             err_payload = json.dumps({
                 "status": "error",
                 "code": "INTERNAL_SERVER_ERROR",
