@@ -44,8 +44,21 @@ except Exception as e:
 
 
 # Vercel ASGI wrapper: normalizes paths and catches crashes with diagnostic telemetry
+_db_initialized = False
+
+def _ensure_db_init():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            from app.database import init_postgres_db
+            init_postgres_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f"[api/index.py] DB init notice: {e}", flush=True)
+
 async def app(scope, receive, send):
     scope_type = scope.get("type")
+    _ensure_db_init()
 
     # If the app failed to load at boot, return diagnostic response instead of FUNCTION_INVOCATION_FAILED
     if _base_app is None:
